@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Background Remover</title>
+    <link rel="stylesheet" href="./static/style.css">
+</head>
+<body>
+<header class="navbar">
+    <div class="logo"><span class="logo-icon">✦</span> BG REMOVER</div>
+    <div class="ai-status"><span class="status-dot"></span><span id="statusText">AI ENGINE ONLINE</span></div>
+</header>
+<main>
+<section class="hero">
+    <div class="badge">⚡ AI POWERED</div>
+    <h1>REMOVE BACKGROUNDS<br><span>WITH AI</span></h1>
+    <p class="subtitle">Fast. Precise. Powerful.<br>Remove image backgrounds with AI directly in your browser.</p>
+
+    <div class="upload-box" id="uploadBox">
+        <div class="upload-icon">☁</div>
+        <h2>DROP YOUR IMAGE</h2>
+        <p>Upload an image to start the AI process</p>
+        <button class="upload-btn" id="uploadBtn">⚡ CHOOSE IMAGE</button>
+        <small>PNG • JPG • JPEG • MAX 10MB</small>
+    </div>
+
+    <div class="processing" id="processing">
+        <div class="scanner"><div class="scan-line"></div><div class="scan-grid"></div><div class="scan-icon">⚡</div></div>
+        <h2 id="processingText">ANALYZING IMAGE...</h2>
+        <p id="processingSub">AI is preparing your image</p>
+        <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+        <div class="percentage" id="percentage">0%</div>
+    </div>
+
+    <section class="result-section" id="resultSection">
+        <div class="result-title"><span>✓ AI PROCESS COMPLETE</span><h2>SEE THE DIFFERENCE</h2></div>
+        <div class="comparison">
+            <div class="image-card"><div class="card-label">ORIGINAL</div><div class="image-container"><img id="originalImage" alt="Original image"></div></div>
+            <div class="comparison-arrow">→</div>
+            <div class="image-card result-card"><div class="card-label">AI REMOVED</div><div class="transparent-bg"><img id="resultImage" alt="Background removed image"></div></div>
+        </div>
+        <div class="result-buttons">
+            <button class="download-btn" id="downloadBtn">⬇ DOWNLOAD PNG</button>
+            <button class="new-btn" id="newBtn">↻ REMOVE ANOTHER IMAGE</button>
+        </div>
+    </section>
+
+    <section class="features">
+        <div class="feature-card"><div class="feature-icon">⚡</div><h3>Lightning Fast</h3><p>Processing runs directly on your device.</p></div>
+        <div class="feature-card"><div class="feature-icon">🎯</div><h3>High Precision</h3><p>AI detects subjects automatically.</p></div>
+        <div class="feature-card"><div class="feature-icon">🔒</div><h3>Private</h3><p>Your image is processed in your browser.</p></div>
+    </section>
+</section>
+</main>
+<footer><span>© 2026</span> AI Background Remover</footer>
+<script type="module" src="./static/script.js"></script>
+</body>
+</html>
