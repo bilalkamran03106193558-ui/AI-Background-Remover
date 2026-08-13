@@ -1,1 +1,245 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Background Remover</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <header class="navbar">
+        <div class="logo">
+            <span class="logo-icon">✦</span>
+            BG REMOVER
+        </div>
+
+        <div class="ai-status">
+            <span class="status-dot"></span>
+            <span id="statusText">AI ENGINE ONLINE</span>
+        </div>
+    </header>
+
+
+    <main>
+
+        <!-- HERO -->
+        <section class="hero">
+
+            <div class="badge">
+                ⚡ AI POWERED
+            </div>
+
+            <h1>
+                REMOVE BACKGROUNDS
+                <br>
+                <span>WITH AI</span>
+            </h1>
+
+            <p class="subtitle">
+                Fast. Precise. Powerful.
+                Remove image backgrounds with next-generation AI technology.
+            </p>
+
+
+            <!-- UPLOAD -->
+            <div class="upload-box" id="uploadBox">
+
+                <div class="upload-icon">
+                    ☁
+                </div>
+
+                <h2>DROP YOUR IMAGE</h2>
+
+                <p>
+                    Upload an image to start the AI process
+                </p>
+
+                <button class="upload-btn" id="uploadBtn">
+                    ⚡ CHOOSE IMAGE
+                </button>
+
+                <small>
+                    PNG • JPG • JPEG • MAX 10MB
+                </small>
+
+            </div>
+
+
+            <!-- PROCESSING -->
+            <div class="processing" id="processing">
+
+                <div class="scanner">
+
+                    <div class="scan-line"></div>
+
+                    <div class="scan-grid"></div>
+
+                    <div class="scan-icon">
+                        ⚡
+                    </div>
+
+                </div>
+
+                <h2 id="processingText">
+                    ANALYZING IMAGE...
+                </h2>
+
+                <p id="processingSub">
+                    AI is detecting the subject
+                </p>
+
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+
+                <div class="percentage" id="percentage">
+                    0%
+                </div>
+
+            </div>
+
+
+            <!-- RESULT -->
+            <section class="result-section" id="resultSection">
+
+                <div class="result-title">
+
+                    <span>✓ AI PROCESS COMPLETE</span>
+
+                    <h2>SEE THE DIFFERENCE</h2>
+
+                </div>
+
+
+                <div class="comparison">
+
+                    <!-- ORIGINAL -->
+                    <div class="image-card">
+
+                        <div class="card-label">
+                            ORIGINAL
+                        </div>
+
+                        <div class="image-container">
+                            <img id="originalImage" alt="Original image">
+                        </div>
+
+                    </div>
+
+
+                    <!-- ARROW -->
+                    <div class="comparison-arrow">
+                        →
+                    </div>
+
+
+                    <!-- RESULT -->
+                    <div class="image-card result-card">
+
+                        <div class="card-label">
+                            AI REMOVED
+                        </div>
+
+                        <div class="transparent-bg">
+                            <img id="resultImage" alt="Background removed image">
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="result-buttons">
+
+                    <button class="download-btn" id="downloadBtn">
+                        ⬇ DOWNLOAD PNG
+                    </button>
+
+                    <button class="new-btn" id="newBtn">
+                        ↻ REMOVE ANOTHER IMAGE
+                    </button>
+
+                </div>
+
+            </section>
+
+
+            <!-- FEATURES -->
+            <section class="features">
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+                        ⚡
+                    </div>
+
+                    <h3>
+                        Lightning Fast
+                    </h3>
+
+                    <p>
+                        Remove backgrounds in seconds.
+                    </p>
+
+                </div>
+
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+                        🎯
+                    </div>
+
+                    <h3>
+                        High Precision
+                    </h3>
+
+                    <p>
+                        AI detects subjects accurately.
+                    </p>
+
+                </div>
+
+
+                <div class="feature-card">
+
+                    <div class="feature-icon">
+                        🔒
+                    </div>
+
+                    <h3>
+                        Private
+                    </h3>
+
+                    <p>
+                        Your images stay protected.
+                    </p>
+
+                </div>
+
+            </section>
+
+        </section>
+
+    </main>
+
+
+    <!-- FOOTER -->
+    <footer>
+        <span>© 2026</span>
+        AI Background Remover
+    </footer>
+
+
+    <!-- YOUR EXISTING JS — DO NOT CHANGE -->
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
+```
