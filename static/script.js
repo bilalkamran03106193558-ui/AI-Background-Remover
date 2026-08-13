@@ -1,4 +1,5 @@
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0";
+const PACKAGE_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+const MODEL_DATA_URL = "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/";
 
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadBox = document.getElementById("uploadBox");
@@ -21,47 +22,49 @@ fileInput.accept = "image/png,image/jpeg,image/jpg,image/webp";
 fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
-// Load the AI module only after the page is ready.
 let removeBackground = null;
-let modelLoading = null;
+let loadingPromise = null;
 
 async function loadAI() {
     if (removeBackground) return removeBackground;
-    if (modelLoading) return modelLoading;
-
-    modelLoading = import(`${MODEL_URL}/+esm`).then(module => {
-        removeBackground = module.default;
-        return removeBackground;
-    });
-
-    return modelLoading;
+    if (!loadingPromise) {
+        loadingPromise = import(PACKAGE_URL).then(module => {
+            removeBackground = module.default;
+            return removeBackground;
+        });
+    }
+    return loadingPromise;
 }
 
-function openFilePicker(event) {
-    if (event) event.preventDefault();
+function openPicker(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     fileInput.click();
 }
 
-uploadBtn.addEventListener("click", openFilePicker);
-uploadBox.addEventListener("click", (event) => {
-    if (event.target !== uploadBtn) openFilePicker(event);
+uploadBtn.addEventListener("click", openPicker);
+
+uploadBox.addEventListener("click", event => {
+    if (event.target !== uploadBtn) openPicker(event);
 });
 
-["dragenter", "dragover"].forEach(type => {
+for (const type of ["dragenter", "dragover"]) {
     uploadBox.addEventListener(type, event => {
         event.preventDefault();
         event.stopPropagation();
         uploadBox.classList.add("drag-over");
     });
-});
+}
 
-["dragleave", "drop"].forEach(type => {
+for (const type of ["dragleave", "drop"]) {
     uploadBox.addEventListener(type, event => {
         event.preventDefault();
         event.stopPropagation();
         uploadBox.classList.remove("drag-over");
     });
-});
+}
 
 uploadBox.addEventListener("drop", event => {
     const file = event.dataTransfer.files?.[0];
@@ -75,7 +78,7 @@ fileInput.addEventListener("change", () => {
 
 async function processFile(file) {
     if (!file.type.startsWith("image/")) {
-        alert("Please select an image.");
+        alert("Please select an image file.");
         return;
     }
 
@@ -84,8 +87,8 @@ async function processFile(file) {
         return;
     }
 
-    const imageURL = URL.createObjectURL(file);
-    originalImage.src = imageURL;
+    const originalURL = URL.createObjectURL(file);
+    originalImage.src = originalURL;
     uploadBox.style.display = "none";
     resultSection.classList.remove("show");
     processing.classList.add("show");
@@ -93,8 +96,8 @@ async function processFile(file) {
     statusDot.style.background = "#00b7ff";
     progressBar.style.width = "1%";
     percentage.textContent = "1%";
-    processingText.textContent = "LOADING AI...";
-    processingSub.textContent = "Preparing the browser AI model. First use may take longer.";
+    processingText.textContent = "LOADING AI MODEL...";
+    processingSub.textContent = "First use may take a little longer while the model downloads.";
 
     try {
         const remove = await loadAI();
@@ -102,43 +105,44 @@ async function processFile(file) {
 
         const resultBlob = await remove(file, {
             model: "isnet_fp16",
-            output: { format: "image/png", type: "foreground" },
+            publicPath: MODEL_DATA_URL,
+            output: {
+                format: "image/png",
+                type: "foreground"
+            },
             progress: (key, current, total) => {
                 if (total > 0) {
-                    const percent = Math.max(2, Math.min(99, Math.round((current / total) * 100)));
+                    const percent = Math.max(2, Math.min(99, Math.round(current / total * 100)));
                     progressBar.style.width = `${percent}%`;
                     percentage.textContent = `${percent}%`;
                 }
-                processingSub.textContent = "AI is processing your image in this browser";
+                processingSub.textContent = "AI is processing your image in this browser.";
             }
         });
 
         const resultURL = URL.createObjectURL(resultBlob);
         progressBar.style.width = "100%";
         percentage.textContent = "100%";
-        finishProcessing(resultURL);
+        resultImage.src = resultURL;
+        statusText.textContent = "AI ENGINE READY";
+        statusDot.style.background = "#00ff88";
+        processingText.textContent = "BACKGROUND REMOVED ✓";
+        processingSub.textContent = "AI processing complete.";
+
+        setTimeout(() => {
+            processing.classList.remove("show");
+            resultSection.classList.add("show");
+            resultSection.scrollIntoView({ behavior: "smooth" });
+        }, 500);
     } catch (error) {
         console.error("Background removal error:", error);
         processing.classList.remove("show");
         uploadBox.style.display = "block";
         statusText.textContent = "AI ENGINE ERROR";
         statusDot.style.background = "#ff3333";
-        alert("Background removal failed. Please refresh the page and try again.");
+        const message = error?.message ? `\n\nError: ${error.message}` : "";
+        alert(`Background removal failed. Check your internet connection and try again.${message}`);
     }
-}
-
-function finishProcessing(resultURL) {
-    processingText.textContent = "BACKGROUND REMOVED ✓";
-    processingSub.textContent = "AI processing complete";
-    statusText.textContent = "AI ENGINE READY";
-    statusDot.style.background = "#00ff88";
-    resultImage.src = resultURL;
-
-    setTimeout(() => {
-        processing.classList.remove("show");
-        resultSection.classList.add("show");
-        resultSection.scrollIntoView({ behavior: "smooth" });
-    }, 500);
 }
 
 downloadBtn.addEventListener("click", () => {
@@ -153,12 +157,10 @@ downloadBtn.addEventListener("click", () => {
 
 newBtn.addEventListener("click", () => {
     resultSection.classList.remove("show");
-    uploadBox.style.display = "block";
     processing.classList.remove("show");
+    uploadBox.style.display = "block";
     progressBar.style.width = "0%";
     percentage.textContent = "0%";
-    processingText.textContent = "LOADING AI...";
-    processingSub.textContent = "Preparing the browser AI model.";
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
     originalImage.src = "";
