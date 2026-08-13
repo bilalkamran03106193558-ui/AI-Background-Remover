@@ -1,4 +1,4 @@
-import removeBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
 
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadBox = document.getElementById("uploadBox");
@@ -24,7 +24,7 @@ document.body.appendChild(fileInput);
 uploadBtn.addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", async () => {
-    const file = fileInput.files[0];
+    const file = fileInput.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -44,25 +44,23 @@ fileInput.addEventListener("change", async () => {
     processing.classList.add("show");
     statusText.textContent = "AI PROCESSING...";
     statusDot.style.background = "#00b7ff";
-    progressBar.style.width = "5%";
-    percentage.textContent = "5%";
-    processingText.textContent = "LOADING AI...";
-    processingSub.textContent = "The AI model is preparing in your browser";
+    progressBar.style.width = "0%";
+    percentage.textContent = "0%";
+    processingText.textContent = "LOADING AI MODEL...";
+    processingSub.textContent = "The first run may take a little longer.";
 
     try {
-        const resultBlob = await removeBackground(file, {
+        const resultBlob = await imglyRemoveBackground(file, {
+            model: "isnet_fp16",
+            output: { format: "image/png", type: "foreground" },
             progress: (key, current, total) => {
                 if (total > 0) {
-                    const percent = Math.max(5, Math.min(99, Math.round((current / total) * 100)));
+                    const percent = Math.max(1, Math.min(99, Math.round((current / total) * 100)));
                     progressBar.style.width = `${percent}%`;
                     percentage.textContent = `${percent}%`;
                 }
-                if (String(key).toLowerCase().includes("model")) {
-                    processingText.textContent = "LOADING AI MODEL...";
-                } else {
-                    processingText.textContent = "REMOVING BACKGROUND...";
-                }
-                processingSub.textContent = "Processing locally on your device";
+                processingText.textContent = "REMOVING BACKGROUND...";
+                processingSub.textContent = "AI is processing your image in this browser";
             }
         });
 
@@ -71,12 +69,12 @@ fileInput.addEventListener("change", async () => {
         percentage.textContent = "100%";
         finishProcessing(resultURL);
     } catch (error) {
-        console.error(error);
+        console.error("Background removal error:", error);
         processing.classList.remove("show");
         uploadBox.style.display = "block";
         statusText.textContent = "AI ENGINE ERROR";
         statusDot.style.background = "#ff3333";
-        alert("Background removal failed. Please try another image or refresh the page.");
+        alert("Background removal failed. Please try again or use a smaller image.");
     }
 });
 
@@ -91,7 +89,7 @@ function finishProcessing(resultURL) {
         processing.classList.remove("show");
         resultSection.classList.add("show");
         resultSection.scrollIntoView({ behavior: "smooth" });
-    }, 700);
+    }, 500);
 }
 
 downloadBtn.addEventListener("click", () => {
@@ -110,8 +108,8 @@ newBtn.addEventListener("click", () => {
     processing.classList.remove("show");
     progressBar.style.width = "0%";
     percentage.textContent = "0%";
-    processingText.textContent = "ANALYZING IMAGE...";
-    processingSub.textContent = "AI is preparing your image";
+    processingText.textContent = "LOADING AI MODEL...";
+    processingSub.textContent = "The first run may take a little longer.";
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
     originalImage.src = "";
