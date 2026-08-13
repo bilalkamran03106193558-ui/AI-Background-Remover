@@ -1,1 +1,734 @@
+```css
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
+    color: #ffffff;
+    overflow-x: hidden;
+
+    background:
+        radial-gradient(circle at 50% 0%, rgba(0, 119, 255, 0.30), transparent 38%),
+        radial-gradient(circle at 0% 60%, rgba(0, 70, 255, 0.12), transparent 30%),
+        linear-gradient(135deg, #020611, #06152d 50%, #020712);
+}
+
+
+/* =========================
+   NAVBAR
+========================= */
+
+.navbar {
+    height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 8%;
+
+    background: rgba(2, 7, 18, 0.95);
+
+    border-bottom: 1px solid #087cff;
+
+    box-shadow: 0 0 25px rgba(0, 119, 255, 0.25);
+}
+
+.logo {
+    font-size: 23px;
+    font-weight: 900;
+    letter-spacing: 1px;
+
+    text-shadow:
+        0 0 10px #087cff,
+        0 0 25px rgba(0, 119, 255, 0.5);
+}
+
+.ai-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    color: #42aaff;
+
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.status-dot {
+    width: 9px;
+    height: 9px;
+
+    border-radius: 50%;
+
+    background: #00ff88;
+
+    box-shadow:
+        0 0 8px #00ff88,
+        0 0 18px #00ff88;
+
+    animation: pulse 1.5s infinite;
+}
+
+
+/* =========================
+   HERO
+========================= */
+
+.hero {
+    text-align: center;
+
+    padding: 75px 20px 30px;
+
+    position: relative;
+}
+
+.badge {
+    display: inline-block;
+
+    padding: 8px 18px;
+
+    color: #42aaff;
+
+    border: 1px solid #087cff;
+
+    background: rgba(0, 119, 255, 0.10);
+
+    border-radius: 6px;
+
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+
+    box-shadow: 0 0 20px rgba(0, 119, 255, 0.25);
+}
+
+h1 {
+    margin-top: 22px;
+
+    font-size: clamp(38px, 6vw, 56px);
+
+    line-height: 1.08;
+
+    font-weight: 900;
+}
+
+h1 span {
+    color: #1597ff;
+
+    text-shadow:
+        0 0 10px #087cff,
+        0 0 30px rgba(0, 119, 255, 0.5);
+}
+
+.subtitle {
+    max-width: 650px;
+
+    margin: 20px auto;
+
+    color: #8da6c3;
+
+    line-height: 1.6;
+}
+
+
+/* =========================
+   UPLOAD BOX
+========================= */
+
+.upload-box {
+    max-width: 680px;
+
+    margin: 45px auto;
+
+    padding: 50px 25px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(8, 30, 60, 0.98),
+            rgba(2, 10, 23, 0.98)
+        );
+
+    border: 1px dashed #087cff;
+
+    border-radius: 14px;
+
+    box-shadow:
+        0 0 30px rgba(0, 119, 255, 0.2),
+        inset 0 0 30px rgba(0, 119, 255, 0.04);
+
+    transition: 0.3s;
+}
+
+.upload-box:hover {
+    border-color: #32aaff;
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 0 50px rgba(0, 119, 255, 0.35);
+}
+
+.upload-icon {
+    font-size: 60px;
+
+    color: #1597ff;
+
+    text-shadow:
+        0 0 15px #087cff,
+        0 0 30px #087cff;
+}
+
+.upload-box h2 {
+    margin-top: 15px;
+
+    font-size: 24px;
+}
+
+.upload-box p {
+    margin: 10px 0 25px;
+
+    color: #758da8;
+}
+
+.upload-box small {
+    display: block;
+
+    margin-top: 18px;
+
+    color: #526a85;
+
+    font-size: 11px;
+    letter-spacing: 1px;
+}
+
+
+/* =========================
+   BUTTONS
+========================= */
+
+.upload-btn,
+.download-btn {
+    border: 1px solid #48baff;
+
+    background:
+        linear-gradient(135deg, #006eff, #00a7ff);
+
+    color: white;
+
+    padding: 15px 32px;
+
+    border-radius: 7px;
+
+    font-weight: 900;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 0 15px rgba(0, 145, 255, 0.6);
+
+    transition: 0.2s;
+}
+
+.upload-btn:hover,
+.download-btn:hover {
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 0 25px rgba(0, 170, 255, 0.9),
+        0 0 50px rgba(0, 110, 255, 0.4);
+}
+
+.upload-btn:active,
+.download-btn:active {
+    transform: translateY(0);
+}
+
+
+/* =========================
+   PROCESSING
+========================= */
+
+.processing {
+    display: none;
+
+    max-width: 500px;
+
+    margin: 50px auto;
+}
+
+.processing.show {
+    display: block;
+
+    animation: fadeIn 0.4s;
+}
+
+.scanner {
+    position: relative;
+
+    width: 180px;
+    height: 180px;
+
+    margin: auto;
+
+    border: 2px solid #087cff;
+
+    border-radius: 15px;
+
+    background: #061426;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 0 25px rgba(0, 119, 255, 0.5);
+}
+
+.scan-line {
+    position: absolute;
+
+    width: 100%;
+    height: 3px;
+
+    background: #00b7ff;
+
+    box-shadow:
+        0 0 10px #00b7ff,
+        0 0 25px #087cff;
+
+    animation: scan 1.5s infinite;
+
+    z-index: 2;
+}
+
+.scan-icon {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    font-size: 55px;
+
+    color: #1597ff;
+
+    text-shadow:
+        0 0 15px #087cff;
+}
+
+.processing h2 {
+    margin-top: 25px;
+
+    font-size: 20px;
+
+    color: #4db8ff;
+}
+
+.processing p {
+    margin-top: 8px;
+
+    color: #7089a5;
+}
+
+.progress {
+    height: 8px;
+
+    max-width: 400px;
+
+    margin: 25px auto 10px;
+
+    background: #10243d;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+.progress-bar {
+    width: 0%;
+
+    height: 100%;
+
+    background:
+        linear-gradient(90deg, #006eff, #00c8ff);
+
+    box-shadow:
+        0 0 15px #00aaff;
+
+    transition: width 0.1s;
+}
+
+.percentage {
+    color: #45b4ff;
+
+    font-weight: bold;
+}
+
+
+/* =========================
+   RESULT
+========================= */
+
+.result-section {
+    display: none;
+
+    max-width: 1000px;
+
+    margin: 60px auto;
+
+    animation: fadeIn 0.6s;
+}
+
+.result-section.show {
+    display: block;
+}
+
+.result-title span {
+    color: #00ff91;
+
+    font-size: 13px;
+
+    font-weight: bold;
+}
+
+.result-title h2 {
+    margin: 10px 0 30px;
+
+    font-size: 32px;
+
+    text-shadow:
+        0 0 15px #087cff;
+}
+
+.comparison {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 25px;
+}
+
+.image-card {
+    width: 330px;
+
+    padding: 10px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #071b35,
+            #030c1b
+        );
+
+    border: 1px solid #087cff;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 0 25px rgba(0, 119, 255, 0.2);
+}
+
+.card-label {
+    padding: 10px;
+
+    color: #56baff;
+
+    font-size: 12px;
+
+    font-weight: bold;
+}
+
+.image-card img {
+    width: 100%;
+    height: 230px;
+
+    object-fit: contain;
+
+    display: block;
+
+    border-radius: 7px;
+
+    background: #020914;
+}
+
+
+/* =========================
+   TRANSPARENT RESULT
+========================= */
+
+.transparent-bg {
+    background-color: #e5e5e5;
+
+    background-image:
+        linear-gradient(45deg, #ccc 25%, transparent 25%),
+        linear-gradient(-45deg, #ccc 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #ccc 75%),
+        linear-gradient(-45deg, transparent 75%, #ccc 75%);
+
+    background-size: 24px 24px;
+
+    background-position:
+        0 0,
+        0 12px,
+        12px -12px,
+        -12px 0;
+
+    border-radius: 7px;
+
+    overflow: hidden;
+}
+
+.transparent-bg img {
+    background: transparent;
+}
+
+
+/* =========================
+   ARROW
+========================= */
+
+.comparison-arrow {
+    font-size: 40px;
+
+    color: #1597ff;
+
+    text-shadow:
+        0 0 15px #087cff,
+        0 0 30px rgba(0, 119, 255, 0.5);
+}
+
+
+/* =========================
+   RESULT BUTTONS
+========================= */
+
+.download-btn {
+    margin-top: 30px;
+
+    font-size: 16px;
+}
+
+.new-btn {
+    margin-left: 10px;
+
+    padding: 14px 25px;
+
+    background: rgba(0, 119, 255, 0.08);
+
+    color: #53b9ff;
+
+    border: 1px solid #087cff;
+
+    border-radius: 7px;
+
+    cursor: pointer;
+
+    font-weight: 800;
+
+    transition: 0.2s;
+}
+
+.new-btn:hover {
+    color: white;
+
+    background: rgba(0, 119, 255, 0.18);
+
+    box-shadow:
+        0 0 20px rgba(0, 119, 255, 0.3);
+
+    transform: translateY(-2px);
+}
+
+
+/* =========================
+   FEATURES
+========================= */
+
+.features {
+    max-width: 1050px;
+
+    margin: 80px auto;
+
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 20px;
+}
+
+.feature-card {
+    padding: 30px 20px;
+
+    text-align: center;
+
+    background:
+        linear-gradient(
+            145deg,
+            #081d39,
+            #030c1b
+        );
+
+    border: 1px solid #123d6d;
+
+    border-radius: 12px;
+
+    transition: 0.25s;
+}
+
+.feature-card:hover {
+    transform: translateY(-6px);
+
+    border-color: #087cff;
+
+    box-shadow:
+        0 0 30px rgba(0, 119, 255, 0.25);
+}
+
+.feature-icon {
+    font-size: 38px;
+
+    margin-bottom: 15px;
+
+    text-shadow:
+        0 0 15px #087cff;
+}
+
+.feature-card h3 {
+    font-size: 18px;
+}
+
+.feature-card p {
+    margin-top: 8px;
+
+    color: #7089a5;
+
+    line-height: 1.5;
+}
+
+
+/* =========================
+   FOOTER
+========================= */
+
+footer {
+    padding: 25px;
+
+    text-align: center;
+
+    color: #526b87;
+
+    background: #020711;
+
+    border-top: 1px solid #12345a;
+
+    font-size: 13px;
+}
+
+
+/* =========================
+   ANIMATIONS
+========================= */
+
+@keyframes scan {
+
+    0% {
+        top: 0;
+    }
+
+    50% {
+        top: calc(100% - 3px);
+    }
+
+    100% {
+        top: 0;
+    }
+}
+
+@keyframes pulse {
+
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.4;
+    }
+}
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
+
+    .navbar {
+        padding: 0 5%;
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .ai-status {
+        font-size: 9px;
+    }
+
+    .hero {
+        padding: 55px 15px 20px;
+    }
+
+    h1 {
+        font-size: 38px;
+    }
+
+    .comparison {
+        flex-direction: column;
+    }
+
+    .comparison-arrow {
+        transform: rotate(90deg);
+    }
+
+    .features {
+        grid-template-columns: 1fr;
+
+        padding: 0 20px;
+    }
+
+    .image-card {
+        width: 90%;
+    }
+
+    .new-btn {
+        display: block;
+
+        margin: 12px auto;
+    }
+}
+```
