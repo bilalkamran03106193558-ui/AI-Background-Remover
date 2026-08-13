@@ -29,11 +29,15 @@ async function loadAI() {
     if (removeBackground) return removeBackground;
     if (!loadingPromise) {
         loadingPromise = import(PACKAGE_URL).then(module => {
-            removeBackground = module.default;
-            return removeBackground;
+            // IMG.LY's ESM build can expose the function in different module shapes.
+            const candidate = module.default || module.removeBackground || module;
+            if (typeof candidate === "function") return candidate;
+            if (typeof module.removeBackground === "function") return module.removeBackground;
+            throw new Error("AI library loaded, but its removeBackground function was not found.");
         });
     }
-    return loadingPromise;
+    removeBackground = await loadingPromise;
+    return removeBackground;
 }
 
 function openPicker(event) {
@@ -45,26 +49,25 @@ function openPicker(event) {
 }
 
 uploadBtn.addEventListener("click", openPicker);
-
 uploadBox.addEventListener("click", event => {
     if (event.target !== uploadBtn) openPicker(event);
 });
 
-for (const type of ["dragenter", "dragover"]) {
+["dragenter", "dragover"].forEach(type => {
     uploadBox.addEventListener(type, event => {
         event.preventDefault();
         event.stopPropagation();
         uploadBox.classList.add("drag-over");
     });
-}
+});
 
-for (const type of ["dragleave", "drop"]) {
+["dragleave", "drop"].forEach(type => {
     uploadBox.addEventListener(type, event => {
         event.preventDefault();
         event.stopPropagation();
         uploadBox.classList.remove("drag-over");
     });
-}
+});
 
 uploadBox.addEventListener("drop", event => {
     const file = event.dataTransfer.files?.[0];
@@ -81,14 +84,12 @@ async function processFile(file) {
         alert("Please select an image file.");
         return;
     }
-
     if (file.size > 10 * 1024 * 1024) {
         alert("Maximum file size is 10MB.");
         return;
     }
 
-    const originalURL = URL.createObjectURL(file);
-    originalImage.src = originalURL;
+    originalImage.src = URL.createObjectURL(file);
     uploadBox.style.display = "none";
     resultSection.classList.remove("show");
     processing.classList.add("show");
@@ -106,10 +107,7 @@ async function processFile(file) {
         const resultBlob = await remove(file, {
             model: "isnet_fp16",
             publicPath: MODEL_DATA_URL,
-            output: {
-                format: "image/png",
-                type: "foreground"
-            },
+            output: { format: "image/png", type: "foreground" },
             progress: (key, current, total) => {
                 if (total > 0) {
                     const percent = Math.max(2, Math.min(99, Math.round(current / total * 100)));
@@ -121,9 +119,9 @@ async function processFile(file) {
         });
 
         const resultURL = URL.createObjectURL(resultBlob);
+        resultImage.src = resultURL;
         progressBar.style.width = "100%";
         percentage.textContent = "100%";
-        resultImage.src = resultURL;
         statusText.textContent = "AI ENGINE READY";
         statusDot.style.background = "#00ff88";
         processingText.textContent = "BACKGROUND REMOVED ✓";
@@ -140,8 +138,7 @@ async function processFile(file) {
         uploadBox.style.display = "block";
         statusText.textContent = "AI ENGINE ERROR";
         statusDot.style.background = "#ff3333";
-        const message = error?.message ? `\n\nError: ${error.message}` : "";
-        alert(`Background removal failed. Check your internet connection and try again.${message}`);
+        alert(`Background removal failed.\n\nError: ${error?.message || error}`);
     }
 }
 
