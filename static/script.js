@@ -1,4 +1,4 @@
-import imglyRemoveBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0";
 
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadBox = document.getElementById("uploadBox");
@@ -21,12 +21,59 @@ fileInput.accept = "image/png,image/jpeg,image/jpg,image/webp";
 fileInput.style.display = "none";
 document.body.appendChild(fileInput);
 
-uploadBtn.addEventListener("click", () => fileInput.click());
+// Load the AI module only after the page is ready.
+let removeBackground = null;
+let modelLoading = null;
 
-fileInput.addEventListener("change", async () => {
+async function loadAI() {
+    if (removeBackground) return removeBackground;
+    if (modelLoading) return modelLoading;
+
+    modelLoading = import(`${MODEL_URL}/+esm`).then(module => {
+        removeBackground = module.default;
+        return removeBackground;
+    });
+
+    return modelLoading;
+}
+
+function openFilePicker(event) {
+    if (event) event.preventDefault();
+    fileInput.click();
+}
+
+uploadBtn.addEventListener("click", openFilePicker);
+uploadBox.addEventListener("click", (event) => {
+    if (event.target !== uploadBtn) openFilePicker(event);
+});
+
+["dragenter", "dragover"].forEach(type => {
+    uploadBox.addEventListener(type, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        uploadBox.classList.add("drag-over");
+    });
+});
+
+["dragleave", "drop"].forEach(type => {
+    uploadBox.addEventListener(type, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        uploadBox.classList.remove("drag-over");
+    });
+});
+
+uploadBox.addEventListener("drop", event => {
+    const file = event.dataTransfer.files?.[0];
+    if (file) processFile(file);
+});
+
+fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
-    if (!file) return;
+    if (file) processFile(file);
+});
 
+async function processFile(file) {
     if (!file.type.startsWith("image/")) {
         alert("Please select an image.");
         return;
@@ -44,22 +91,24 @@ fileInput.addEventListener("change", async () => {
     processing.classList.add("show");
     statusText.textContent = "AI PROCESSING...";
     statusDot.style.background = "#00b7ff";
-    progressBar.style.width = "0%";
-    percentage.textContent = "0%";
-    processingText.textContent = "LOADING AI MODEL...";
-    processingSub.textContent = "The first run may take a little longer.";
+    progressBar.style.width = "1%";
+    percentage.textContent = "1%";
+    processingText.textContent = "LOADING AI...";
+    processingSub.textContent = "Preparing the browser AI model. First use may take longer.";
 
     try {
-        const resultBlob = await imglyRemoveBackground(file, {
+        const remove = await loadAI();
+        processingText.textContent = "REMOVING BACKGROUND...";
+
+        const resultBlob = await remove(file, {
             model: "isnet_fp16",
             output: { format: "image/png", type: "foreground" },
             progress: (key, current, total) => {
                 if (total > 0) {
-                    const percent = Math.max(1, Math.min(99, Math.round((current / total) * 100)));
+                    const percent = Math.max(2, Math.min(99, Math.round((current / total) * 100)));
                     progressBar.style.width = `${percent}%`;
                     percentage.textContent = `${percent}%`;
                 }
-                processingText.textContent = "REMOVING BACKGROUND...";
                 processingSub.textContent = "AI is processing your image in this browser";
             }
         });
@@ -74,9 +123,9 @@ fileInput.addEventListener("change", async () => {
         uploadBox.style.display = "block";
         statusText.textContent = "AI ENGINE ERROR";
         statusDot.style.background = "#ff3333";
-        alert("Background removal failed. Please try again or use a smaller image.");
+        alert("Background removal failed. Please refresh the page and try again.");
     }
-});
+}
 
 function finishProcessing(resultURL) {
     processingText.textContent = "BACKGROUND REMOVED ✓";
@@ -108,8 +157,8 @@ newBtn.addEventListener("click", () => {
     processing.classList.remove("show");
     progressBar.style.width = "0%";
     percentage.textContent = "0%";
-    processingText.textContent = "LOADING AI MODEL...";
-    processingSub.textContent = "The first run may take a little longer.";
+    processingText.textContent = "LOADING AI...";
+    processingSub.textContent = "Preparing the browser AI model.";
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
     originalImage.src = "";
