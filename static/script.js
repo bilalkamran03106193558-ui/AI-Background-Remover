@@ -28,6 +28,8 @@ let loadingPromise = null;
 let currentOriginalUrl = null;
 let currentResultUrl = null;
 let currentDownloadName = "background-removed.png";
+let animationTimer = null;
+let visualProgress = 0;
 
 function cleanupUrls() {
   if (currentOriginalUrl) {
@@ -42,8 +44,28 @@ function cleanupUrls() {
 
 function setProgress(value) {
   const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  visualProgress = clamped;
   if (progressBar) progressBar.style.width = `${clamped}%`;
   if (percentage) percentage.textContent = `${clamped}%`;
+}
+
+// Smooth animation independent of model callbacks so it never looks stuck
+function startSmoothAnimation(cap = 92) {
+  stopSmoothAnimation();
+  animationTimer = setInterval(() => {
+    if (visualProgress < cap) {
+      const remaining = cap - visualProgress;
+      const step = Math.max(0.4, remaining * 0.04);
+      setProgress(Math.min(cap, visualProgress + step));
+    }
+  }, 180);
+}
+
+function stopSmoothAnimation() {
+  if (animationTimer) {
+    clearInterval(animationTimer);
+    animationTimer = null;
+  }
 }
 
 function loadImageElement(src) {
@@ -140,6 +162,7 @@ function openPicker(event) {
 }
 
 function resetToUpload() {
+  stopSmoothAnimation();
   cleanupUrls();
   if (originalImage) originalImage.removeAttribute("src");
   if (resultImage) resultImage.removeAttribute("src");
@@ -208,6 +231,7 @@ async function processFile(file) {
     return;
   }
 
+  stopSmoothAnimation();
   cleanupUrls();
   const baseName = (file.name || "image").replace(/\.[^.]+$/, "");
   currentDownloadName = `${baseName}-no-bg.png`;
@@ -220,9 +244,10 @@ async function processFile(file) {
   processing.classList.add("show");
   statusText.textContent = "AI PROCESSING...";
   statusDot.style.background = "#00b7ff";
-  setProgress(5);
+  setProgress(3);
   processingText.textContent = "LOADING AI MODEL...";
-  processingSub.textContent = "First use may take longer while AI files load...";
+  processingSub.textContent = "Preparing local AI engine...";
+  startSmoothAnimation(92);
 
   try {
     const [originalImg, remove] = await Promise.all([
@@ -235,47 +260,17 @@ async function processFile(file) {
       originalImg
     );
 
-    setProgress(12);
     processingText.textContent = "REMOVING BACKGROUND...";
-    processingSub.textContent = "AI is running locally in your browser. Please wait...";
+    processingSub.textContent = "Running AI segmentation on your image...";
 
-    let lastShown = 12;
     const rawResultBlob = await remove(aiInput, {
       model: "isnet_quint8",
       publicPath: MODEL_DATA_URL,
-      output: { format: "image/png", type: "foreground" },
-      progress: (key, current, total) => {
-        if (!total || total <= 0) return;
-        const stage = String(key || "").toLowerCase();
-        let start = 12;
-        let end = 92;
-
-        if (stage.includes("fetch")) {
-          start = 12;
-          end = 45;
-        } else if (stage.includes("decode")) {
-          start = 45;
-          end = 56;
-        } else if (stage.includes("inference") || stage.includes("compute")) {
-          start = 56;
-          end = 84;
-        } else {
-          start = 84;
-          end = 92;
-        }
-
-        const ratio = Math.max(0, Math.min(1, current / total));
-        const mapped = start + ratio * (end - start);
-        if (mapped > lastShown) {
-          lastShown = mapped;
-          setProgress(mapped);
-        }
-      }
+      output: { format: "image/png", type: "foreground" }
     });
 
-    setProgress(95);
     processingText.textContent = "FINALIZING PNG...";
-    processingSub.textContent = "Restoring original image dimensions...";
+    processingSub.textContent = "Matching original image dimensions...";
 
     const finalPngBlob = await restoreOriginalDimensions(
       rawResultBlob,
@@ -284,15 +279,18 @@ async function processFile(file) {
       wasResized
     );
 
+    stopSmoothAnimation();
+    setProgress(100);
+
     currentResultUrl = URL.createObjectURL(finalPngBlob);
     resultImage.src = currentResultUrl;
 
-    setProgress(100);
     processing.classList.remove("show");
     resultSection.classList.add("show");
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
   } catch (error) {
+    stopSmoothAnimation();
     console.error("Background removal error:", error);
     alert("Failed: " + (error?.message || "Unknown error occurred."));
     resetToUpload();
