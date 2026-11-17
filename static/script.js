@@ -1,5 +1,5 @@
-const PACKAGE_URL = "[https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm](https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm)";
-const MODEL_DATA_URL = "[https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/](https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/)";
+const PACKAGE_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+const MODEL_DATA_URL = "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/";
 const MAX_IMAGE_DIMENSION = 1280;
 
 const uploadBtn = document.getElementById("uploadBtn");
@@ -46,34 +46,39 @@ function setProgress(value) {
   if (percentage) percentage.textContent = `${clamped}%`;
 }
 
-async function prepareImageForAI(file) {
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = bitmap;
+function loadImageElement(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to decode image."));
+    img.src = src;
+  });
+}
+
+async function prepareImageForAI(file, tempUrl) {
+  const img = await loadImageElement(tempUrl);
+  const width = img.naturalWidth || img.width;
+  const height = img.naturalHeight || img.height;
   const longestSide = Math.max(width, height);
 
-  if (longestSide <= MAX_IMAGE_DIMENSION) {
-    bitmap.close();
+  if (!longestSide || longestSide <= MAX_IMAGE_DIMENSION) {
     return file;
   }
 
   const scale = MAX_IMAGE_DIMENSION / longestSide;
-  const targetWidth = Math.round(width * scale);
-  const targetHeight = Math.round(height * scale);
+  const targetWidth = Math.max(1, Math.round(width * scale));
+  const targetHeight = Math.max(1, Math.round(height * scale));
 
   const canvas = document.createElement("canvas");
   canvas.width = targetWidth;
   canvas.height = targetHeight;
 
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0, targetWidth, targetHeight);
-  bitmap.close();
+  ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
-  return await new Promise((resolve, reject) => {
+  return await new Promise((resolve) => {
     canvas.toBlob(
-      (blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error("Could not resize image."));
-      },
+      (blob) => resolve(blob || file),
       "image/jpeg",
       0.9
     );
@@ -184,21 +189,22 @@ async function processFile(file) {
   processing.classList.add("show");
   statusText.textContent = "AI PROCESSING...";
   statusDot.style.background = "#00b7ff";
-  setProgress(2);
+  setProgress(1);
   processingText.textContent = "PREPARING IMAGE...";
   processingSub.textContent = "Optimizing image size for fast browser processing...";
 
   try {
-    const inputForAI = await prepareImageForAI(file);
-    setProgress(5);
+    const inputForAI = await prepareImageForAI(file, currentOriginalUrl);
+    setProgress(4);
     processingText.textContent = "LOADING AI MODEL...";
     processingSub.textContent = "First use may take longer while the AI model downloads.";
 
     const remove = await loadAI();
+    setProgress(8);
     processingText.textContent = "REMOVING BACKGROUND...";
     processingSub.textContent = "AI is running locally in your browser. Please wait...";
 
-    let lastShown = 5;
+    let lastShown = 8;
     const resultBlob = await remove(inputForAI, {
       model: "isnet_quint8",
       publicPath: MODEL_DATA_URL,
@@ -206,10 +212,10 @@ async function processFile(file) {
       progress: (key, current, total) => {
         if (!total || total <= 0) return;
         const stage = String(key || "").toLowerCase();
-        let start = 5;
-        let end = 95;
+        let start = 8;
+        let end = 96;
         if (stage.includes("fetch")) {
-          start = 5;
+          start = 8;
           end = 55;
         } else if (stage.includes("decode")) {
           start = 55;
@@ -241,7 +247,7 @@ async function processFile(file) {
     statusDot.style.background = "#00ff88";
   } catch (error) {
     console.error("Background removal error:", error);
-    alert("Could not remove background. Please try another image or refresh the page.");
+    alert("Error: " + (error?.message || "Could not remove background."));
     resetToUpload();
   }
 }
