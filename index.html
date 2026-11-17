@@ -18,43 +18,82 @@
       <h1>REMOVE BACKGROUNDS<br><span>WITH AI</span></h1>
       <p class="subtitle">Fast. Precise. Powerful.<br>Remove image backgrounds with AI directly in your browser.</p>
 
+      <div class="notice-banner" id="noticeBanner" role="alert"></div>
+
       <div class="upload-box" id="uploadBox">
         <div class="upload-icon">☁</div>
         <h2>DROP YOUR IMAGE</h2>
         <p>Upload an image to start the AI process</p>
-        <button class="upload-btn" id="uploadBtn">⚡ CHOOSE IMAGE</button>
-        <small>PNG • JPG • JPEG • MAX 10MB</small>
+        <button class="upload-btn" id="uploadBtn" type="button">⚡ CHOOSE IMAGE</button>
+        <small>PNG • JPG • JPEG • WEBP • MAX 10MB</small>
+
+        <div class="sample-row">
+          <span>Try a quick sample:</span>
+          <button class="sample-btn" id="sampleBadgeBtn" type="button">Neon Badge</button>
+          <button class="sample-btn" id="sampleCardBtn" type="button">Gaming Emblem</button>
+        </div>
       </div>
 
       <div class="processing" id="processing">
         <div class="scanner"><div class="scan-icon">⚡</div></div>
-        <h2 id="processingText">ANALYZING IMAGE...</h2>
-        <p id="processingSub">AI is preparing your image</p>
+        <h2 id="processingText">PROCESSING IMAGE...</h2>
+        <p id="processingSub">Removing background locally in your browser...</p>
       </div>
 
       <section class="result-section" id="resultSection">
-        <div class="result-title"><span>✓ AI PROCESS COMPLETE</span><h2>SEE THE DIFFERENCE</h2></div>
+        <div class="result-title">
+          <span>✓ AI PROCESS COMPLETE</span>
+          <h2>SEE THE DIFFERENCE</h2>
+        </div>
+
+        <div class="preview-toolbar">
+          <span class="toolbar-label">Preview Background:</span>
+          <div class="bg-swatches" role="group" aria-label="Preview background color">
+            <button class="swatch-btn active" data-bg="checker" type="button">Checker</button>
+            <button class="swatch-btn" data-bg="dark" type="button">Dark</button>
+            <button class="swatch-btn" data-bg="light" type="button">White</button>
+            <button class="swatch-btn" data-bg="neon" type="button">Neon</button>
+          </div>
+        </div>
+
         <div class="comparison">
           <div class="image-card">
             <div class="card-label">ORIGINAL</div>
             <div class="image-container"><img id="originalImage" alt="Original image"></div>
+            <div class="card-meta" id="originalMeta">—</div>
           </div>
+
           <div class="comparison-arrow">→</div>
+
           <div class="image-card result-card">
-            <div class="card-label">AI REMOVED</div>
-            <div class="transparent-bg"><img id="resultImage" alt="Background removed image"></div>
+            <div class="card-label">AI REMOVED (PNG)</div>
+            <div class="transparent-bg" id="resultStage"><img id="resultImage" alt="Background removed image"></div>
+            <div class="card-meta" id="resultMeta">—</div>
           </div>
         </div>
+
         <div class="result-buttons">
-          <button class="download-btn" id="downloadBtn">⬇ DOWNLOAD PNG</button>
-          <button class="new-btn" id="newBtn">↻ REMOVE ANOTHER IMAGE</button>
+          <button class="download-btn" id="downloadBtn" type="button">⬇ DOWNLOAD PNG</button>
+          <button class="new-btn" id="newBtn" type="button">↻ REMOVE ANOTHER IMAGE</button>
         </div>
       </section>
 
       <section class="features">
-        <div class="feature-card"><div class="feature-icon">⚡</div><h3>Lightning Fast</h3><p>Processing runs directly on your device.</p></div>
-        <div class="feature-card"><div class="feature-icon">🎯</div><h3>High Precision</h3><p>Clean cutouts with transparent PNG output.</p></div>
-        <div class="feature-card"><div class="feature-icon">🔒</div><h3>Private</h3><p>Images stay in your browser session.</p></div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Lightning Fast</h3>
+          <p>Optimizes large photos for fast browser processing while keeping original dimensions.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎯</div>
+          <h3>High Precision</h3>
+          <p>Clean transparent PNG output with multi-background edge inspection.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Private</h3>
+          <p>Images stay in your browser session and are never uploaded to a backend server.</p>
+        </div>
       </section>
     </section>
   </main>
