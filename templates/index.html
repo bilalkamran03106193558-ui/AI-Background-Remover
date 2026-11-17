@@ -1,245 +1,171 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>AI Background Remover</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Background Remover</title>
+  <link rel="stylesheet" href="./static/style.css">
 </head>
-
 <body>
+  <header class="navbar">
+    <div class="logo"><span class="logo-icon">✦</span> BG REMOVER</div>
+    <div class="ai-status"><span class="status-dot"></span><span id="statusText">AI ENGINE ONLINE</span></div>
+  </header>
 
-    <!-- NAVBAR -->
-    <header class="navbar">
-        <div class="logo">
-            <span class="logo-icon">✦</span>
-            BG REMOVER
+  <main>
+    <section class="hero">
+      <div class="badge">⚡ AI POWERED STUDIO</div>
+      <h1>REMOVE BACKGROUNDS<br><span>WITH AI</span></h1>
+      <p class="subtitle">Fast. Precise. Powerful.<br>Remove backgrounds, inspect edges, zoom, pan, crop, and export clean PNGs in your browser.</p>
+
+      <div class="notice-banner" id="noticeBanner" role="alert"></div>
+
+      <div class="upload-box" id="uploadBox">
+        <div class="upload-icon">☁</div>
+        <h2>DROP YOUR IMAGE</h2>
+        <p>Upload an image to start the AI process</p>
+        <button class="upload-btn" id="uploadBtn" type="button">⚡ CHOOSE IMAGE</button>
+        <small>PNG • JPG • JPEG • WEBP • MAX 10MB</small>
+
+        <div class="sample-row">
+          <span>Try a quick sample:</span>
+          <button class="sample-btn" id="sampleBadgeBtn" type="button">Neon Badge</button>
+          <button class="sample-btn" id="sampleCardBtn" type="button">Gaming Emblem</button>
+        </div>
+      </div>
+
+      <div class="processing" id="processing">
+        <div class="scanner"><div class="scan-icon">⚡</div></div>
+        <h2 id="processingText">PROCESSING IMAGE...</h2>
+        <p id="processingSub">Removing background locally in your browser...</p>
+      </div>
+
+      <section class="result-section" id="resultSection">
+        <div class="result-title">
+          <span>✓ AI PROCESS COMPLETE</span>
+          <h2>STUDIO PREVIEW &amp; EXPORT</h2>
         </div>
 
-        <div class="ai-status">
-            <span class="status-dot"></span>
-            <span id="statusText">AI ENGINE ONLINE</span>
+        <div class="studio-toolbar">
+          <div class="toolbar-group">
+            <span class="toolbar-label">View:</span>
+            <button class="tool-btn active" id="modeSideBtn" type="button">Side-by-Side</button>
+            <button class="tool-btn" id="modeSliderBtn" type="button">Before / After</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">Zoom:</span>
+            <button class="tool-btn" id="zoomOutBtn" type="button">−</button>
+            <span class="zoom-readout" id="zoomReadout">100%</span>
+            <button class="tool-btn" id="zoomInBtn" type="button">+</button>
+            <button class="tool-btn" id="zoomResetBtn" type="button">Reset</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">Transform:</span>
+            <button class="tool-btn" id="rotateBtn" type="button">Rotate 90°</button>
+            <button class="tool-btn" id="flipBtn" type="button">Flip H</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">Crop:</span>
+            <button class="tool-btn" id="cropToggleBtn" type="button">Crop Tool</button>
+            <button class="tool-btn apply-btn" id="cropApplyBtn" type="button" style="display:none;">Apply Crop</button>
+            <button class="tool-btn" id="cropCancelBtn" type="button" style="display:none;">Cancel</button>
+          </div>
+
+          <div class="toolbar-group">
+            <button class="tool-btn" id="glowToggleBtn" type="button">Edge Glow: Off</button>
+          </div>
         </div>
-    </header>
 
+        <div class="preview-toolbar">
+          <span class="toolbar-label">Backdrop:</span>
+          <div class="bg-swatches" role="group" aria-label="Preview backdrop presets">
+            <button class="swatch-btn active" data-bg="checker" type="button">Checker</button>
+            <button class="swatch-btn" data-bg="dark" type="button">Dark</button>
+            <button class="swatch-btn" data-bg="light" type="button">White</button>
+            <button class="swatch-btn" data-bg="neon" type="button">Neon</button>
+            <button class="swatch-btn" data-bg="sunset" type="button">Sunset</button>
+            <button class="swatch-btn" data-bg="green" type="button">Green</button>
+            <label class="color-picker-wrap" title="Pick custom backdrop color">
+              <span>Custom</span>
+              <input type="color" id="customColorInput" value="#00b7ff">
+            </label>
+          </div>
 
-    <main>
+          <label class="export-toggle-wrap" title="Bake active backdrop color into downloaded PNG">
+            <input type="checkbox" id="includeBackdropCheck">
+            <span>Export With Backdrop</span>
+          </label>
+        </div>
 
-        <!-- HERO -->
-        <section class="hero">
-
-            <div class="badge">
-                ⚡ AI POWERED
+        <!-- SIDE-BY-SIDE VIEW -->
+        <div class="comparison" id="sideBySideView">
+          <div class="image-card">
+            <div class="card-label">ORIGINAL</div>
+            <div class="image-container" id="originalStage">
+              <img id="originalImage" alt="Original image">
             </div>
+            <div class="card-meta" id="originalMeta">—</div>
+          </div>
 
-            <h1>
-                REMOVE BACKGROUNDS
-                <br>
-                <span>WITH AI</span>
-            </h1>
+          <div class="comparison-arrow">→</div>
 
-            <p class="subtitle">
-                Fast. Precise. Powerful.
-                Remove image backgrounds with next-generation AI technology.
-            </p>
-
-
-            <!-- UPLOAD -->
-            <div class="upload-box" id="uploadBox">
-
-                <div class="upload-icon">
-                    ☁
-                </div>
-
-                <h2>DROP YOUR IMAGE</h2>
-
-                <p>
-                    Upload an image to start the AI process
-                </p>
-
-                <button class="upload-btn" id="uploadBtn">
-                    ⚡ CHOOSE IMAGE
-                </button>
-
-                <small>
-                    PNG • JPG • JPEG • MAX 10MB
-                </small>
-
+          <div class="image-card result-card">
+            <div class="card-label">AI REMOVED (PNG)</div>
+            <div class="transparent-bg" id="resultStage">
+              <img id="resultImage" alt="Background removed image">
+              <div class="crop-overlay" id="cropOverlay">
+                <div class="crop-box" id="cropBox"></div>
+              </div>
             </div>
+            <div class="card-meta" id="resultMeta">—</div>
+          </div>
+        </div>
 
-
-            <!-- PROCESSING -->
-            <div class="processing" id="processing">
-
-                <div class="scanner">
-
-                    <div class="scan-line"></div>
-
-                    <div class="scan-grid"></div>
-
-                    <div class="scan-icon">
-                        ⚡
-                    </div>
-
-                </div>
-
-                <h2 id="processingText">
-                    ANALYZING IMAGE...
-                </h2>
-
-                <p id="processingSub">
-                    AI is detecting the subject
-                </p>
-
-                <div class="progress">
-                    <div class="progress-bar" id="progressBar"></div>
-                </div>
-
-                <div class="percentage" id="percentage">
-                    0%
-                </div>
-
+        <!-- BEFORE / AFTER SLIDER VIEW -->
+        <div class="slider-view" id="sliderView">
+          <div class="slider-stage transparent-bg" id="sliderStage">
+            <img id="sliderAfterImage" class="slider-img after-img" alt="After background removal">
+            <div class="slider-before-clip" id="sliderBeforeClip">
+              <img id="sliderBeforeImage" class="slider-img before-img" alt="Before background removal">
             </div>
+            <div class="slider-divider" id="sliderDivider">
+              <div class="slider-knob">↔</div>
+            </div>
+            <input type="range" min="0" max="100" value="50" id="compareRange" class="compare-range" aria-label="Compare before and after">
+          </div>
+          <div class="card-meta" id="sliderMeta">Drag slider to compare Original vs. AI Removed</div>
+        </div>
 
+        <div class="result-buttons">
+          <button class="download-btn" id="downloadBtn" type="button">⬇ DOWNLOAD PNG</button>
+          <button class="copy-btn" id="copyBtn" type="button">📋 COPY PNG</button>
+          <button class="new-btn" id="newBtn" type="button">↻ REMOVE ANOTHER IMAGE</button>
+        </div>
+      </section>
 
-            <!-- RESULT -->
-            <section class="result-section" id="resultSection">
+      <section class="features">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Fast Local AI</h3>
+          <p>Runs in your browser while preserving original image dimensions.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔍</div>
+          <h3>Zoom, Pan &amp; Crop</h3>
+          <p>Inspect cutouts closely with zoom, drag-to-pan, before/after slider, and crop.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🎨</div>
+          <h3>Backdrops &amp; Copy</h3>
+          <p>Test custom backdrops, bake colors on export, or copy PNG directly to clipboard.</p>
+        </div>
+      </section>
+    </section>
+  </main>
 
-                <div class="result-title">
-
-                    <span>✓ AI PROCESS COMPLETE</span>
-
-                    <h2>SEE THE DIFFERENCE</h2>
-
-                </div>
-
-
-                <div class="comparison">
-
-                    <!-- ORIGINAL -->
-                    <div class="image-card">
-
-                        <div class="card-label">
-                            ORIGINAL
-                        </div>
-
-                        <div class="image-container">
-                            <img id="originalImage" alt="Original image">
-                        </div>
-
-                    </div>
-
-
-                    <!-- ARROW -->
-                    <div class="comparison-arrow">
-                        →
-                    </div>
-
-
-                    <!-- RESULT -->
-                    <div class="image-card result-card">
-
-                        <div class="card-label">
-                            AI REMOVED
-                        </div>
-
-                        <div class="transparent-bg">
-                            <img id="resultImage" alt="Background removed image">
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="result-buttons">
-
-                    <button class="download-btn" id="downloadBtn">
-                        ⬇ DOWNLOAD PNG
-                    </button>
-
-                    <button class="new-btn" id="newBtn">
-                        ↻ REMOVE ANOTHER IMAGE
-                    </button>
-
-                </div>
-
-            </section>
-
-
-            <!-- FEATURES -->
-            <section class="features">
-
-                <div class="feature-card">
-
-                    <div class="feature-icon">
-                        ⚡
-                    </div>
-
-                    <h3>
-                        Lightning Fast
-                    </h3>
-
-                    <p>
-                        Remove backgrounds in seconds.
-                    </p>
-
-                </div>
-
-
-                <div class="feature-card">
-
-                    <div class="feature-icon">
-                        🎯
-                    </div>
-
-                    <h3>
-                        High Precision
-                    </h3>
-
-                    <p>
-                        AI detects subjects accurately.
-                    </p>
-
-                </div>
-
-
-                <div class="feature-card">
-
-                    <div class="feature-icon">
-                        🔒
-                    </div>
-
-                    <h3>
-                        Private
-                    </h3>
-
-                    <p>
-                        Your images stay protected.
-                    </p>
-
-                </div>
-
-            </section>
-
-        </section>
-
-    </main>
-
-
-    <!-- FOOTER -->
-    <footer>
-        <span>© 2026</span>
-        AI Background Remover
-    </footer>
-
-
-    <!-- YOUR EXISTING JS — DO NOT CHANGE -->
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
-
+  <script type="module" src="./static/script.js"></script>
 </body>
 </html>
-```
