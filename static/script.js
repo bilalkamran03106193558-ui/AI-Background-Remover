@@ -7,9 +7,17 @@ const uploadBtn = document.getElementById("uploadBtn");
 const uploadBox = document.getElementById("uploadBox");
 const processing = document.getElementById("processing");
 const resultSection = document.getElementById("resultSection");
+const sideBySideView = document.getElementById("sideBySideView");
+const sliderView = document.getElementById("sliderView");
 const resultStage = document.getElementById("resultStage");
+const sliderStage = document.getElementById("sliderStage");
 const originalImage = document.getElementById("originalImage");
 const resultImage = document.getElementById("resultImage");
+const sliderBeforeImage = document.getElementById("sliderBeforeImage");
+const sliderAfterImage = document.getElementById("sliderAfterImage");
+const sliderBeforeClip = document.getElementById("sliderBeforeClip");
+const sliderDivider = document.getElementById("sliderDivider");
+const compareRange = document.getElementById("compareRange");
 const originalMeta = document.getElementById("originalMeta");
 const resultMeta = document.getElementById("resultMeta");
 const processingText = document.getElementById("processingText");
@@ -21,6 +29,20 @@ const downloadBtn = document.getElementById("downloadBtn");
 const newBtn = document.getElementById("newBtn");
 const sampleBadgeBtn = document.getElementById("sampleBadgeBtn");
 const sampleCardBtn = document.getElementById("sampleCardBtn");
+
+const modeSideBtn = document.getElementById("modeSideBtn");
+const modeSliderBtn = document.getElementById("modeSliderBtn");
+const zoomInBtn = document.getElementById("zoomInBtn");
+const zoomOutBtn = document.getElementById("zoomOutBtn");
+const zoomResetBtn = document.getElementById("zoomResetBtn");
+const zoomReadout = document.getElementById("zoomReadout");
+const cropToggleBtn = document.getElementById("cropToggleBtn");
+const cropApplyBtn = document.getElementById("cropApplyBtn");
+const cropCancelBtn = document.getElementById("cropCancelBtn");
+const cropOverlay = document.getElementById("cropOverlay");
+const cropBox = document.getElementById("cropBox");
+const glowToggleBtn = document.getElementById("glowToggleBtn");
+const customColorInput = document.getElementById("customColorInput");
 const swatchButtons = document.querySelectorAll(".swatch-btn");
 
 const fileInput = document.createElement("input");
@@ -33,7 +55,14 @@ let removeBackground = null;
 let loadingPromise = null;
 let currentOriginalUrl = null;
 let currentResultUrl = null;
+let currentResultBlob = null;
 let currentDownloadName = "background-removed.png";
+
+let zoomLevel = 1;
+let glowOn = false;
+let isCropping = false;
+let dragStart = null;
+let cropRect = { left: 0.15, top: 0.15, width: 0.7, height: 0.7 };
 
 function showNotice(message) {
   if (!noticeBanner) return;
@@ -62,6 +91,7 @@ function cleanupUrls() {
     URL.revokeObjectURL(currentResultUrl);
     currentResultUrl = null;
   }
+  currentResultBlob = null;
 }
 
 function loadImageElement(src) {
@@ -73,13 +103,99 @@ function loadImageElement(src) {
   });
 }
 
+function applyZoom() {
+  const pct = Math.round(zoomLevel * 100);
+  if (zoomReadout) zoomReadout.textContent = `${pct}%`;
+  const transform = `scale(${zoomLevel})`;
+  if (originalImage) originalImage.style.transform = transform;
+  if (resultImage) resultImage.style.transform = transform;
+  if (sliderBeforeImage) sliderBeforeImage.style.transform = transform;
+  if (sliderAfterImage) sliderAfterImage.style.transform = transform;
+}
+
+function updateSlider(val) {
+  const pct = Math.max(0, Math.min(100, Number(val) || 50));
+  if (sliderBeforeClip) sliderBeforeClip.style.width = `${pct}%`;
+  if (sliderDivider) sliderDivider.style.left = `${pct}%`;
+  if (compareRange) compareRange.value = String(pct);
+}
+
+function syncSliderWidth() {
+  if (!sliderStage || !sliderBeforeImage) return;
+  sliderBeforeImage.style.width = `${sliderStage.clientWidth}px`;
+}
+
+function renderCropBox() {
+  if (!cropBox) return;
+  cropBox.style.left = `${cropRect.left * 100}%`;
+  cropBox.style.top = `${cropRect.top * 100}%`;
+  cropBox.style.width = `${cropRect.width * 100}%`;
+  cropBox.style.height = `${cropRect.height * 100}%`;
+}
+
+function setCropMode(active) {
+  isCropping = active;
+  if (active) {
+    // Switch to side-by-side so cropping on resultStage is clear
+    modeSideBtn?.click();
+    cropRect = { left: 0.15, top: 0.15, width: 0.7, height: 0.7 };
+    renderCropBox();
+    cropOverlay?.classList.add("active");
+    if (cropApplyBtn) cropApplyBtn.style.display = "inline-block";
+    if (cropCancelBtn) cropCancelBtn.style.display = "inline-block";
+    if (cropToggleBtn) cropToggleBtn.classList.add("active");
+  } else {
+    cropOverlay?.classList.remove("active");
+    if (cropApplyBtn) cropApplyBtn.style.display = "none";
+    if (cropCancelBtn) cropCancelBtn.style.display = "none";
+    if (cropToggleBtn) cropToggleBtn.classList.remove("active");
+  }
+}
+
+async function applyCroppedResult() {
+  if (!currentResultBlob) return;
+  const tempUrl = URL.createObjectURL(currentResultBlob);
+  try {
+    const img = await loadImageElement(tempUrl);
+    const w = img.naturalWidth || img.width;
+    const h = img.naturalHeight || img.height;
+
+    const sx = Math.max(0, Math.floor(cropRect.left * w));
+    const sy = Math.max(0, Math.floor(cropRect.top * h));
+    const sw = Math.max(1, Math.min(w - sx, Math.floor(cropRect.width * w)));
+    const sh = Math.max(1, Math.min(h - sy, Math.floor(cropRect.height * h)));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    const croppedBlob = await new Promise((resolve) =>
+      canvas.toBlob((blob) => resolve(blob || currentResultBlob), "image/png")
+    );
+
+    if (currentResultUrl) URL.revokeObjectURL(currentResultUrl);
+    currentResultBlob = croppedBlob;
+    currentResultUrl = URL.createObjectURL(croppedBlob);
+    resultImage.src = currentResultUrl;
+    sliderAfterImage.src = currentResultUrl;
+
+    if (resultMeta) {
+      resultMeta.textContent = `Cropped ${sw}×${sh} px • ${formatKb(croppedBlob.size)}`;
+    }
+    setCropMode(false);
+  } finally {
+    URL.revokeObjectURL(tempUrl);
+  }
+}
+
 async function createSampleFile(variant) {
   const canvas = document.createElement("canvas");
   canvas.width = 800;
   canvas.height = 800;
   const ctx = canvas.getContext("2d");
 
-  // Solid background so background removal has clear contrast
   const bgGrad = ctx.createLinearGradient(0, 0, 800, 800);
   if (variant === "card") {
     bgGrad.addColorStop(0, "#1d0c3b");
@@ -91,7 +207,6 @@ async function createSampleFile(variant) {
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, 800);
 
-  // Foreground subject shape
   ctx.save();
   ctx.translate(400, 400);
   ctx.fillStyle = variant === "card" ? "#ff9900" : "#00d4ff";
@@ -130,12 +245,7 @@ async function createFastInput(file, originalImg) {
   const longestSide = Math.max(origWidth, origHeight);
 
   if (!longestSide || longestSide <= MAX_AI_DIMENSION) {
-    return {
-      aiInput: file,
-      origWidth,
-      origHeight,
-      wasResized: false
-    };
+    return { aiInput: file, origWidth, origHeight, wasResized: false };
   }
 
   const scale = MAX_AI_DIMENSION / longestSide;
@@ -210,9 +320,14 @@ function openPicker(event) {
 }
 
 function resetToUpload() {
+  setCropMode(false);
+  zoomLevel = 1;
+  applyZoom();
   cleanupUrls();
   if (originalImage) originalImage.removeAttribute("src");
   if (resultImage) resultImage.removeAttribute("src");
+  if (sliderBeforeImage) sliderBeforeImage.removeAttribute("src");
+  if (sliderAfterImage) sliderAfterImage.removeAttribute("src");
   if (originalMeta) originalMeta.textContent = "—";
   if (resultMeta) resultMeta.textContent = "—";
   if (resultSection) resultSection.classList.remove("show");
@@ -222,19 +337,119 @@ function resetToUpload() {
   if (statusDot) statusDot.style.background = "#00ff88";
 }
 
+// View Mode Buttons
+modeSideBtn?.addEventListener("click", () => {
+  modeSideBtn.classList.add("active");
+  modeSliderBtn?.classList.remove("active");
+  if (sideBySideView) sideBySideView.style.display = "grid";
+  sliderView?.classList.remove("show");
+});
+
+modeSliderBtn?.addEventListener("click", () => {
+  setCropMode(false);
+  modeSliderBtn.classList.add("active");
+  modeSideBtn?.classList.remove("active");
+  if (sideBySideView) sideBySideView.style.display = "none";
+  sliderView?.classList.add("show");
+  syncSliderWidth();
+  updateSlider(compareRange?.value || 50);
+});
+
+compareRange?.addEventListener("input", (e) => updateSlider(e.target.value));
+window.addEventListener("resize", syncSliderWidth);
+
+// Zoom Controls
+zoomInBtn?.addEventListener("click", () => {
+  zoomLevel = Math.min(3, Number((zoomLevel + 0.25).toFixed(2)));
+  applyZoom();
+});
+
+zoomOutBtn?.addEventListener("click", () => {
+  zoomLevel = Math.max(0.5, Number((zoomLevel - 0.25).toFixed(2)));
+  applyZoom();
+});
+
+zoomResetBtn?.addEventListener("click", () => {
+  zoomLevel = 1;
+  applyZoom();
+});
+
+// Crop Controls
+cropToggleBtn?.addEventListener("click", () => setCropMode(!isCropping));
+cropCancelBtn?.addEventListener("click", () => setCropMode(false));
+cropApplyBtn?.addEventListener("click", applyCroppedResult);
+
+cropOverlay?.addEventListener("pointerdown", (e) => {
+  if (!isCropping) return;
+  const rect = cropOverlay.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+  dragStart = { x, y };
+  cropRect = { left: x, top: y, width: 0.02, height: 0.02 };
+  renderCropBox();
+});
+
+cropOverlay?.addEventListener("pointermove", (e) => {
+  if (!isCropping || !dragStart) return;
+  const rect = cropOverlay.getBoundingClientRect();
+  const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+  cropRect = {
+    left: Math.min(dragStart.x, x),
+    top: Math.min(dragStart.y, y),
+    width: Math.max(0.05, Math.abs(x - dragStart.x)),
+    height: Math.max(0.05, Math.abs(y - dragStart.y))
+  };
+  renderCropBox();
+});
+
+window.addEventListener("pointerup", () => {
+  dragStart = null;
+});
+
+// Glow Toggle
+glowToggleBtn?.addEventListener("click", () => {
+  glowOn = !glowOn;
+  resultSection?.classList.toggle("glow-enabled", glowOn);
+  glowToggleBtn.classList.toggle("active", glowOn);
+  glowToggleBtn.textContent = glowOn ? "Edge Glow: On" : "Edge Glow: Off";
+});
+
+// Backdrop Presets & Custom Color
+function applyPresetClass(mode) {
+  const stages = [resultStage, sliderStage];
+  stages.forEach((stage) => {
+    if (!stage) return;
+    stage.style.background = "";
+    stage.style.backgroundColor = "";
+    stage.style.backgroundImage = "";
+    stage.classList.remove("bg-dark", "bg-light", "bg-neon", "bg-sunset", "bg-green");
+    if (mode && mode !== "checker") {
+      stage.classList.add(`bg-${mode}`);
+    }
+  });
+}
+
 swatchButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     swatchButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    if (!resultStage) return;
-    resultStage.classList.remove("bg-dark", "bg-light", "bg-neon");
-    const mode = btn.dataset.bg;
-    if (mode === "dark") resultStage.classList.add("bg-dark");
-    else if (mode === "light") resultStage.classList.add("bg-light");
-    else if (mode === "neon") resultStage.classList.add("bg-neon");
+    applyPresetClass(btn.dataset.bg || "checker");
   });
 });
 
+customColorInput?.addEventListener("input", (e) => {
+  swatchButtons.forEach((b) => b.classList.remove("active"));
+  const color = e.target.value;
+  [resultStage, sliderStage].forEach((stage) => {
+    if (!stage) return;
+    stage.classList.remove("bg-dark", "bg-light", "bg-neon", "bg-sunset", "bg-green");
+    stage.style.backgroundImage = "none";
+    stage.style.backgroundColor = color;
+  });
+});
+
+// Upload & Samples
 uploadBtn.addEventListener("click", openPicker);
 uploadBox.addEventListener("click", (event) => {
   if (event.target !== uploadBtn && !event.target.closest(".sample-row")) {
@@ -242,21 +457,15 @@ uploadBox.addEventListener("click", (event) => {
   }
 });
 
-if (sampleBadgeBtn) {
-  sampleBadgeBtn.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    const sample = await createSampleFile("badge");
-    processFile(sample);
-  });
-}
+sampleBadgeBtn?.addEventListener("click", async (event) => {
+  event.stopPropagation();
+  processFile(await createSampleFile("badge"));
+});
 
-if (sampleCardBtn) {
-  sampleCardBtn.addEventListener("click", async (event) => {
-    event.stopPropagation();
-    const sample = await createSampleFile("card");
-    processFile(sample);
-  });
-}
+sampleCardBtn?.addEventListener("click", async (event) => {
+  event.stopPropagation();
+  processFile(await createSampleFile("card"));
+});
 
 ["dragenter", "dragover"].forEach((type) =>
   uploadBox.addEventListener(type, (event) => {
@@ -284,21 +493,17 @@ fileInput.addEventListener("change", () => {
   if (file) processFile(file);
 });
 
-if (newBtn) {
-  newBtn.addEventListener("click", resetToUpload);
-}
+newBtn?.addEventListener("click", resetToUpload);
 
-if (downloadBtn) {
-  downloadBtn.addEventListener("click", () => {
-    if (!currentResultUrl) return;
-    const link = document.createElement("a");
-    link.href = currentResultUrl;
-    link.download = currentDownloadName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
-}
+downloadBtn?.addEventListener("click", () => {
+  if (!currentResultUrl) return;
+  const link = document.createElement("a");
+  link.href = currentResultUrl;
+  link.download = currentDownloadName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+});
 
 async function processFile(file) {
   clearNotice();
@@ -312,12 +517,17 @@ async function processFile(file) {
     return;
   }
 
+  setCropMode(false);
+  zoomLevel = 1;
+  applyZoom();
   cleanupUrls();
+
   const baseName = (file.name || "image").replace(/\.[^.]+$/, "");
   currentDownloadName = `${baseName}-no-bg.png`;
 
   currentOriginalUrl = URL.createObjectURL(file);
   originalImage.src = currentOriginalUrl;
+  if (sliderBeforeImage) sliderBeforeImage.src = currentOriginalUrl;
 
   uploadBox.style.display = "none";
   resultSection.classList.remove("show");
@@ -355,8 +565,10 @@ async function processFile(file) {
       wasResized
     );
 
+    currentResultBlob = finalPngBlob;
     currentResultUrl = URL.createObjectURL(finalPngBlob);
     resultImage.src = currentResultUrl;
+    if (sliderAfterImage) sliderAfterImage.src = currentResultUrl;
 
     if (resultMeta) {
       resultMeta.textContent = `${origWidth}×${origHeight} px • ${formatKb(finalPngBlob.size)}`;
@@ -364,6 +576,8 @@ async function processFile(file) {
 
     processing.classList.remove("show");
     resultSection.classList.add("show");
+    syncSliderWidth();
+    updateSlider(50);
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
   } catch (error) {
