@@ -16,7 +16,7 @@
     <section class="hero">
       <div class="badge">⚡ AI POWERED STUDIO</div>
       <h1>REMOVE BACKGROUNDS<br><span>WITH AI</span></h1>
-      <p class="subtitle">Fast. Precise. Powerful.<br>Remove backgrounds, inspect edges, zoom, crop, and export transparent PNGs in your browser.</p>
+      <p class="subtitle">Fast. Precise. Powerful.<br>Remove backgrounds, inspect edges, zoom, pan, crop, and export clean PNGs in your browser.</p>
 
       <div class="notice-banner" id="noticeBanner" role="alert"></div>
 
@@ -48,9 +48,9 @@
 
         <div class="studio-toolbar">
           <div class="toolbar-group">
-            <span class="toolbar-label">View Mode:</span>
+            <span class="toolbar-label">View:</span>
             <button class="tool-btn active" id="modeSideBtn" type="button">Side-by-Side</button>
-            <button class="tool-btn" id="modeSliderBtn" type="button">Before / After Slider</button>
+            <button class="tool-btn" id="modeSliderBtn" type="button">Before / After</button>
           </div>
 
           <div class="toolbar-group">
@@ -59,6 +59,12 @@
             <span class="zoom-readout" id="zoomReadout">100%</span>
             <button class="tool-btn" id="zoomInBtn" type="button">+</button>
             <button class="tool-btn" id="zoomResetBtn" type="button">Reset</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">Transform:</span>
+            <button class="tool-btn" id="rotateBtn" type="button">Rotate 90°</button>
+            <button class="tool-btn" id="flipBtn" type="button">Flip H</button>
           </div>
 
           <div class="toolbar-group">
@@ -87,6 +93,11 @@
               <input type="color" id="customColorInput" value="#00b7ff">
             </label>
           </div>
+
+          <label class="export-toggle-wrap" title="Bake active backdrop color into downloaded PNG">
+            <input type="checkbox" id="includeBackdropCheck">
+            <span>Export With Backdrop</span>
+          </label>
         </div>
 
         <!-- SIDE-BY-SIDE VIEW -->
@@ -130,6 +141,7 @@
 
         <div class="result-buttons">
           <button class="download-btn" id="downloadBtn" type="button">⬇ DOWNLOAD PNG</button>
+          <button class="copy-btn" id="copyBtn" type="button">📋 COPY PNG</button>
           <button class="new-btn" id="newBtn" type="button">↻ REMOVE ANOTHER IMAGE</button>
         </div>
       </section>
@@ -142,13 +154,13 @@
         </div>
         <div class="feature-card">
           <div class="feature-icon">🔍</div>
-          <h3>Zoom, Crop &amp; Compare</h3>
-          <p>Inspect cutouts with a before/after slider, zoom controls, and custom crop.</p>
+          <h3>Zoom, Pan &amp; Crop</h3>
+          <p>Inspect cutouts closely with zoom, drag-to-pan, before/after slider, and crop.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🎨</div>
-          <h3>Backdrop Presets</h3>
-          <p>Test transparent, dark, white, neon, or custom colors before saving PNG.</p>
+          <h3>Backdrops &amp; Copy</h3>
+          <p>Test custom backdrops, bake colors on export, or copy PNG directly to clipboard.</p>
         </div>
       </section>
     </section>
