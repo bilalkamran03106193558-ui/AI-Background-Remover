@@ -46,42 +46,38 @@ function setProgress(value) {
   if (percentage) percentage.textContent = `${clamped}%`;
 }
 
-function loadImageElement(src) {
-  return new Promise((resolve, reject) => {
+function resizeIfLarge(file, tempUrl) {
+  return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Failed to decode image."));
-    img.src = src;
-  });
-}
+    img.onload = () => {
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      const longestSide = Math.max(width, height);
 
-async function prepareImageForAI(file, tempUrl) {
-  const img = await loadImageElement(tempUrl);
-  const width = img.naturalWidth || img.width;
-  const height = img.naturalHeight || img.height;
-  const longestSide = Math.max(width, height);
+      if (!longestSide || longestSide <= MAX_IMAGE_DIMENSION) {
+        resolve(file);
+        return;
+      }
 
-  if (!longestSide || longestSide <= MAX_IMAGE_DIMENSION) {
-    return file;
-  }
+      const scale = MAX_IMAGE_DIMENSION / longestSide;
+      const targetWidth = Math.max(1, Math.round(width * scale));
+      const targetHeight = Math.max(1, Math.round(height * scale));
 
-  const scale = MAX_IMAGE_DIMENSION / longestSide;
-  const targetWidth = Math.max(1, Math.round(width * scale));
-  const targetHeight = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-  return await new Promise((resolve) => {
-    canvas.toBlob(
-      (blob) => resolve(blob || file),
-      "image/jpeg",
-      0.9
-    );
+      canvas.toBlob(
+        (blob) => resolve(blob || file),
+        "image/jpeg",
+        0.9
+      );
+    };
+    img.onerror = () => resolve(file);
+    img.src = tempUrl;
   });
 }
 
@@ -92,7 +88,7 @@ async function loadAI() {
       const candidate = module.default || module.removeBackground || module;
       if (typeof candidate === "function") return candidate;
       if (typeof module.removeBackground === "function") return module.removeBackground;
-      throw new Error("AI library loaded, but removeBackground was not found.");
+      throw new Error("Could not initialize background removal library.");
     });
   }
   removeBackground = await loadingPromise;
@@ -189,33 +185,32 @@ async function processFile(file) {
   processing.classList.add("show");
   statusText.textContent = "AI PROCESSING...";
   statusDot.style.background = "#00b7ff";
-  setProgress(1);
-  processingText.textContent = "PREPARING IMAGE...";
-  processingSub.textContent = "Optimizing image size for fast browser processing...";
+  setProgress(5);
+  processingText.textContent = "LOADING AI MODEL...";
+  processingSub.textContent = "First use may take longer while AI files load...";
 
   try {
-    const inputForAI = await prepareImageForAI(file, currentOriginalUrl);
-    setProgress(4);
-    processingText.textContent = "LOADING AI MODEL...";
-    processingSub.textContent = "First use may take longer while the AI model downloads.";
+    const [preparedImage, remove] = await Promise.all([
+      resizeIfLarge(file, currentOriginalUrl),
+      loadAI()
+    ]);
 
-    const remove = await loadAI();
-    setProgress(8);
+    setProgress(10);
     processingText.textContent = "REMOVING BACKGROUND...";
     processingSub.textContent = "AI is running locally in your browser. Please wait...";
 
-    let lastShown = 8;
-    const resultBlob = await remove(inputForAI, {
+    let lastShown = 10;
+    const resultBlob = await remove(preparedImage, {
       model: "isnet_quint8",
       publicPath: MODEL_DATA_URL,
       output: { format: "image/png", type: "foreground" },
       progress: (key, current, total) => {
         if (!total || total <= 0) return;
         const stage = String(key || "").toLowerCase();
-        let start = 8;
+        let start = 10;
         let end = 96;
         if (stage.includes("fetch")) {
-          start = 8;
+          start = 10;
           end = 55;
         } else if (stage.includes("decode")) {
           start = 55;
@@ -247,7 +242,7 @@ async function processFile(file) {
     statusDot.style.background = "#00ff88";
   } catch (error) {
     console.error("Background removal error:", error);
-    alert("Error: " + (error?.message || "Could not remove background."));
+    alert("Failed: " + (error?.message || "Unknown error occurred."));
     resetToUpload();
   }
 }
