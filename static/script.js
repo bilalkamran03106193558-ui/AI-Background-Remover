@@ -9,6 +9,7 @@ const processing = document.getElementById("processing");
 const resultSection = document.getElementById("resultSection");
 const sideBySideView = document.getElementById("sideBySideView");
 const sliderView = document.getElementById("sliderView");
+const originalStage = document.getElementById("originalStage");
 const resultStage = document.getElementById("resultStage");
 const sliderStage = document.getElementById("sliderStage");
 const originalImage = document.getElementById("originalImage");
@@ -26,6 +27,7 @@ const statusText = document.getElementById("statusText");
 const statusDot = document.querySelector(".status-dot");
 const noticeBanner = document.getElementById("noticeBanner");
 const downloadBtn = document.getElementById("downloadBtn");
+const copyBtn = document.getElementById("copyBtn");
 const newBtn = document.getElementById("newBtn");
 const sampleBadgeBtn = document.getElementById("sampleBadgeBtn");
 const sampleCardBtn = document.getElementById("sampleCardBtn");
@@ -36,6 +38,8 @@ const zoomInBtn = document.getElementById("zoomInBtn");
 const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomResetBtn = document.getElementById("zoomResetBtn");
 const zoomReadout = document.getElementById("zoomReadout");
+const rotateBtn = document.getElementById("rotateBtn");
+const flipBtn = document.getElementById("flipBtn");
 const cropToggleBtn = document.getElementById("cropToggleBtn");
 const cropApplyBtn = document.getElementById("cropApplyBtn");
 const cropCancelBtn = document.getElementById("cropCancelBtn");
@@ -43,6 +47,7 @@ const cropOverlay = document.getElementById("cropOverlay");
 const cropBox = document.getElementById("cropBox");
 const glowToggleBtn = document.getElementById("glowToggleBtn");
 const customColorInput = document.getElementById("customColorInput");
+const includeBackdropCheck = document.getElementById("includeBackdropCheck");
 const swatchButtons = document.querySelectorAll(".swatch-btn");
 
 const fileInput = document.createElement("input");
@@ -59,21 +64,31 @@ let currentResultBlob = null;
 let currentDownloadName = "background-removed.png";
 
 let zoomLevel = 1;
+let rotationDeg = 0;
+let flippedH = false;
+let panX = 0;
+let panY = 0;
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+
+let activeBackdropMode = "checker";
+let customBackdropColor = "#00b7ff";
 let glowOn = false;
 let isCropping = false;
 let dragStart = null;
 let cropRect = { left: 0.15, top: 0.15, width: 0.7, height: 0.7 };
 
-function showNotice(message) {
+function showNotice(message, isInfo = false) {
   if (!noticeBanner) return;
   noticeBanner.textContent = message;
+  noticeBanner.classList.toggle("info", isInfo);
   noticeBanner.classList.add("show");
 }
 
 function clearNotice() {
   if (!noticeBanner) return;
   noticeBanner.textContent = "";
-  noticeBanner.classList.remove("show");
+  noticeBanner.classList.remove("show", "info");
 }
 
 function formatKb(bytes) {
@@ -103,13 +118,22 @@ function loadImageElement(src) {
   });
 }
 
-function applyZoom() {
-  const pct = Math.round(zoomLevel * 100);
-  if (zoomReadout) zoomReadout.textContent = `${pct}%`;
-  const transform = `scale(${zoomLevel})`;
-  if (originalImage) originalImage.style.transform = transform;
+function applyImageTransform() {
+  if (zoomReadout) zoomReadout.textContent = `${Math.round(zoomLevel * 100)}%`;
+  const canPan = zoomLevel > 1 && !isCropping;
+  [originalStage, resultStage].forEach((stage) => stage?.classList.toggle("can-pan", canPan));
+
+  if (zoomLevel <= 1) {
+    panX = 0;
+    panY = 0;
+  }
+
+  const scaleX = flippedH ? -zoomLevel : zoomLevel;
+  const transform = `translate(${panX}px, ${panY}px) scale(${scaleX}, ${zoomLevel}) rotate(${rotationDeg}deg)`;
+
+  if (originalImage) originalImage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
   if (resultImage) resultImage.style.transform = transform;
-  if (sliderBeforeImage) sliderBeforeImage.style.transform = transform;
+  if (sliderBeforeImage) sliderBeforeImage.style.transform = `translate(${panX}px, ${panY}px) scale(${zoomLevel})`;
   if (sliderAfterImage) sliderAfterImage.style.transform = transform;
 }
 
@@ -135,8 +159,8 @@ function renderCropBox() {
 
 function setCropMode(active) {
   isCropping = active;
+  applyImageTransform();
   if (active) {
-    // Switch to side-by-side so cropping on resultStage is clear
     modeSideBtn?.click();
     cropRect = { left: 0.15, top: 0.15, width: 0.7, height: 0.7 };
     renderCropBox();
@@ -185,6 +209,69 @@ async function applyCroppedResult() {
       resultMeta.textContent = `Cropped ${sw}×${sh} px • ${formatKb(croppedBlob.size)}`;
     }
     setCropMode(false);
+  } finally {
+    URL.revokeObjectURL(tempUrl);
+  }
+}
+
+function paintBackdropOnCanvas(ctx, width, height, mode, customHex) {
+  if (mode === "dark") {
+    ctx.fillStyle = "#070b14";
+    ctx.fillRect(0, 0, width, height);
+  } else if (mode === "light") {
+    ctx.fillStyle = "#f4f7ff";
+    ctx.fillRect(0, 0, width, height);
+  } else if (mode === "neon") {
+    ctx.fillStyle = "#09254a";
+    ctx.fillRect(0, 0, width, height);
+  } else if (mode === "green") {
+    ctx.fillStyle = "#0b4f2c";
+    ctx.fillRect(0, 0, width, height);
+  } else if (mode === "sunset") {
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, "#4b1d52");
+    grad.addColorStop(0.5, "#b83b5e");
+    grad.addColorStop(1, "#f08a5d");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+  } else if (mode === "custom") {
+    ctx.fillStyle = customHex || "#00b7ff";
+    ctx.fillRect(0, 0, width, height);
+  }
+}
+
+async function buildExportPngBlob() {
+  if (!currentResultBlob) return null;
+  const tempUrl = URL.createObjectURL(currentResultBlob);
+  try {
+    const img = await loadImageElement(tempUrl);
+    const srcW = img.naturalWidth || img.width;
+    const srcH = img.naturalHeight || img.height;
+    const swapSides = (Math.abs(rotationDeg) % 180) === 90;
+    const outW = swapSides ? srcH : srcW;
+    const outH = swapSides ? srcW : srcH;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = outW;
+    canvas.height = outH;
+    const ctx = canvas.getContext("2d");
+
+    if (includeBackdropCheck?.checked && activeBackdropMode !== "checker") {
+      paintBackdropOnCanvas(ctx, outW, outH, activeBackdropMode, customBackdropColor);
+    } else {
+      ctx.clearRect(0, 0, outW, outH);
+    }
+
+    ctx.save();
+    ctx.translate(outW / 2, outH / 2);
+    if (rotationDeg) ctx.rotate((rotationDeg * Math.PI) / 180);
+    if (flippedH) ctx.scale(-1, 1);
+    ctx.drawImage(img, -srcW / 2, -srcH / 2, srcW, srcH);
+    ctx.restore();
+
+    return await new Promise((resolve) =>
+      canvas.toBlob((blob) => resolve(blob || currentResultBlob), "image/png")
+    );
   } finally {
     URL.revokeObjectURL(tempUrl);
   }
@@ -322,7 +409,11 @@ function openPicker(event) {
 function resetToUpload() {
   setCropMode(false);
   zoomLevel = 1;
-  applyZoom();
+  rotationDeg = 0;
+  flippedH = false;
+  panX = 0;
+  panY = 0;
+  applyImageTransform();
   cleanupUrls();
   if (originalImage) originalImage.removeAttribute("src");
   if (resultImage) resultImage.removeAttribute("src");
@@ -358,20 +449,59 @@ modeSliderBtn?.addEventListener("click", () => {
 compareRange?.addEventListener("input", (e) => updateSlider(e.target.value));
 window.addEventListener("resize", syncSliderWidth);
 
-// Zoom Controls
+// Zoom & Pan Controls
 zoomInBtn?.addEventListener("click", () => {
   zoomLevel = Math.min(3, Number((zoomLevel + 0.25).toFixed(2)));
-  applyZoom();
+  applyImageTransform();
 });
 
 zoomOutBtn?.addEventListener("click", () => {
   zoomLevel = Math.max(0.5, Number((zoomLevel - 0.25).toFixed(2)));
-  applyZoom();
+  applyImageTransform();
 });
 
 zoomResetBtn?.addEventListener("click", () => {
   zoomLevel = 1;
-  applyZoom();
+  rotationDeg = 0;
+  flippedH = false;
+  panX = 0;
+  panY = 0;
+  applyImageTransform();
+});
+
+rotateBtn?.addEventListener("click", () => {
+  rotationDeg = (rotationDeg + 90) % 360;
+  applyImageTransform();
+});
+
+flipBtn?.addEventListener("click", () => {
+  flippedH = !flippedH;
+  flipBtn.classList.toggle("active", flippedH);
+  applyImageTransform();
+});
+
+[originalStage, resultStage].forEach((stage) => {
+  stage?.addEventListener("pointerdown", (e) => {
+    if (zoomLevel <= 1 || isCropping) return;
+    isPanning = true;
+    panStart = { x: e.clientX - panX, y: e.clientY - panY };
+    stage.classList.add("panning");
+  });
+});
+
+window.addEventListener("pointermove", (e) => {
+  if (!isPanning) return;
+  panX = e.clientX - panStart.x;
+  panY = e.clientY - panStart.y;
+  applyImageTransform();
+});
+
+window.addEventListener("pointerup", () => {
+  if (isPanning) {
+    isPanning = false;
+    [originalStage, resultStage].forEach((stage) => stage?.classList.remove("panning"));
+  }
+  dragStart = null;
 });
 
 // Crop Controls
@@ -403,10 +533,6 @@ cropOverlay?.addEventListener("pointermove", (e) => {
   renderCropBox();
 });
 
-window.addEventListener("pointerup", () => {
-  dragStart = null;
-});
-
 // Glow Toggle
 glowToggleBtn?.addEventListener("click", () => {
   glowOn = !glowOn;
@@ -416,15 +542,23 @@ glowToggleBtn?.addEventListener("click", () => {
 });
 
 // Backdrop Presets & Custom Color
-function applyPresetClass(mode) {
-  const stages = [resultStage, sliderStage];
-  stages.forEach((stage) => {
+function applyBackdropMode(mode, hexColor = customBackdropColor) {
+  activeBackdropMode = mode;
+  if (mode === "custom" && hexColor) {
+    customBackdropColor = hexColor;
+  }
+
+  [resultStage, sliderStage].forEach((stage) => {
     if (!stage) return;
     stage.style.background = "";
     stage.style.backgroundColor = "";
     stage.style.backgroundImage = "";
     stage.classList.remove("bg-dark", "bg-light", "bg-neon", "bg-sunset", "bg-green");
-    if (mode && mode !== "checker") {
+
+    if (mode === "custom") {
+      stage.style.backgroundImage = "none";
+      stage.style.backgroundColor = customBackdropColor;
+    } else if (mode !== "checker") {
       stage.classList.add(`bg-${mode}`);
     }
   });
@@ -434,19 +568,13 @@ swatchButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     swatchButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    applyPresetClass(btn.dataset.bg || "checker");
+    applyBackdropMode(btn.dataset.bg || "checker");
   });
 });
 
 customColorInput?.addEventListener("input", (e) => {
   swatchButtons.forEach((b) => b.classList.remove("active"));
-  const color = e.target.value;
-  [resultStage, sliderStage].forEach((stage) => {
-    if (!stage) return;
-    stage.classList.remove("bg-dark", "bg-light", "bg-neon", "bg-sunset", "bg-green");
-    stage.style.backgroundImage = "none";
-    stage.style.backgroundColor = color;
-  });
+  applyBackdropMode("custom", e.target.value);
 });
 
 // Upload & Samples
@@ -495,14 +623,32 @@ fileInput.addEventListener("change", () => {
 
 newBtn?.addEventListener("click", resetToUpload);
 
-downloadBtn?.addEventListener("click", () => {
-  if (!currentResultUrl) return;
+downloadBtn?.addEventListener("click", async () => {
+  const exportBlob = await buildExportPngBlob();
+  if (!exportBlob) return;
+  const url = URL.createObjectURL(exportBlob);
   const link = document.createElement("a");
-  link.href = currentResultUrl;
+  link.href = url;
   link.download = currentDownloadName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+copyBtn?.addEventListener("click", async () => {
+  const exportBlob = await buildExportPngBlob();
+  if (!exportBlob) return;
+  try {
+    if (navigator.clipboard && typeof ClipboardItem !== "undefined") {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": exportBlob })]);
+      showNotice("PNG copied to clipboard! You can paste it directly into your editor.", true);
+    } else {
+      showNotice("Clipboard image copy isn't supported in this browser—use Download PNG.");
+    }
+  } catch (err) {
+    showNotice("Could not copy PNG automatically—use Download PNG instead.");
+  }
 });
 
 async function processFile(file) {
@@ -519,7 +665,11 @@ async function processFile(file) {
 
   setCropMode(false);
   zoomLevel = 1;
-  applyZoom();
+  rotationDeg = 0;
+  flippedH = false;
+  panX = 0;
+  panY = 0;
+  applyImageTransform();
   cleanupUrls();
 
   const baseName = (file.name || "image").replace(/\.[^.]+$/, "");
