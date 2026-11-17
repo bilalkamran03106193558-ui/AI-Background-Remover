@@ -1,248 +1,509 @@
-const PACKAGE_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
-const MODEL_DATA_URL = "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/";
-const MAX_IMAGE_DIMENSION = 1280;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-const uploadBtn = document.getElementById("uploadBtn");
-const uploadBox = document.getElementById("uploadBox");
-const processing = document.getElementById("processing");
-const resultSection = document.getElementById("resultSection");
-const originalImage = document.getElementById("originalImage");
-const resultImage = document.getElementById("resultImage");
-const progressBar = document.getElementById("progressBar");
-const percentage = document.getElementById("percentage");
-const processingText = document.getElementById("processingText");
-const processingSub = document.getElementById("processingSub");
-const statusText = document.getElementById("statusText");
-const statusDot = document.querySelector(".status-dot");
-const downloadBtn = document.getElementById("downloadBtn");
-const newBtn = document.getElementById("newBtn");
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(circle at top, #0d1b3e 0%, #060a16 65%, #03050c 100%);
+  color: #f4f7ff;
+  min-height: 100vh;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
 
-const fileInput = document.createElement("input");
-fileInput.type = "file";
-fileInput.accept = "image/png,image/jpeg,image/jpg,image/webp";
-fileInput.style.display = "none";
-document.body.appendChild(fileInput);
+/* NAVBAR */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 6%;
+  background: rgba(10, 18, 40, 0.72);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0, 183, 255, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
 
-let removeBackground = null;
-let loadingPromise = null;
-let currentOriginalUrl = null;
-let currentResultUrl = null;
-let currentDownloadName = "background-removed.png";
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #ffffff;
+}
 
-function cleanupUrls() {
-  if (currentOriginalUrl) {
-    URL.revokeObjectURL(currentOriginalUrl);
-    currentOriginalUrl = null;
+.logo-icon {
+  color: #00b7ff;
+  font-size: 1.3rem;
+  text-shadow: 0 0 12px rgba(0, 183, 255, 0.8);
+}
+
+.ai-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 255, 136, 0.08);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #00ff88;
+  box-shadow: 0 0 10px #00ff88;
+}
+
+/* HERO */
+.hero {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 52px 20px 30px;
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(0, 183, 255, 0.14);
+  border: 1px solid rgba(0, 183, 255, 0.4);
+  color: #6fd3ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 18px;
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight: 900;
+  line-height: 1.12;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.hero h1 span {
+  background: linear-gradient(90deg, #00b7ff, #5ef2ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  max-width: 620px;
+  margin: 0 auto 24px;
+  color: #b7c6e6;
+  font-size: 1.05rem;
+}
+
+/* INLINE NOTICE BANNER */
+.notice-banner {
+  display: none;
+  max-width: 640px;
+  margin: 0 auto 20px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  background: rgba(255, 77, 109, 0.14);
+  border: 1px solid rgba(255, 77, 109, 0.45);
+  color: #ffd6de;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.notice-banner.show {
+  display: block;
+}
+
+/* UPLOAD BOX */
+.upload-box {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 44px 28px;
+  border-radius: 20px;
+  background: rgba(14, 25, 56, 0.65);
+  backdrop-filter: blur(14px);
+  border: 2px dashed rgba(0, 183, 255, 0.45);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.upload-box:hover,
+.upload-box.drag-over {
+  transform: translateY(-3px);
+  border-color: #00b7ff;
+  box-shadow: 0 0 30px rgba(0, 183, 255, 0.28);
+}
+
+.upload-icon {
+  font-size: 2.8rem;
+  margin-bottom: 12px;
+  color: #5ef2ff;
+}
+
+.upload-box h2 {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  letter-spacing: 0.8px;
+}
+
+.upload-box p {
+  color: #a9b8d8;
+  margin-bottom: 22px;
+  font-size: 0.95rem;
+}
+
+.upload-btn {
+  background: linear-gradient(135deg, #0088ff, #00d4ff);
+  color: #041024;
+  border: none;
+  padding: 13px 28px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 183, 255, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 212, 255, 0.5);
+}
+
+.upload-box small {
+  display: block;
+  margin-top: 14px;
+  color: #7f92ba;
+  font-size: 0.78rem;
+  letter-spacing: 0.8px;
+}
+
+.sample-row {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 183, 255, 0.16);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: #9cb2dc;
+}
+
+.sample-btn {
+  background: rgba(0, 183, 255, 0.12);
+  color: #79dcff;
+  border: 1px solid rgba(0, 183, 255, 0.35);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sample-btn:hover {
+  background: rgba(0, 183, 255, 0.24);
+  border-color: #5ef2ff;
+}
+
+/* PROCESSING */
+.processing {
+  display: none;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  border-radius: 20px;
+  background: rgba(14, 25, 56, 0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(0, 183, 255, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.processing.show {
+  display: block;
+}
+
+.scanner {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 20px;
+  border-radius: 18px;
+  background: rgba(0, 183, 255, 0.12);
+  border: 1px solid rgba(0, 183, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scan-icon {
+  font-size: 2.2rem;
+  color: #5ef2ff;
+}
+
+.processing h2 {
+  font-size: 1.3rem;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.processing p {
+  color: #b4c4e4;
+  font-size: 0.95rem;
+}
+
+/* RESULT SECTION */
+.result-section {
+  display: none;
+  max-width: 1000px;
+  margin: 36px auto 0;
+  padding: 0 20px;
+}
+
+.result-section.show {
+  display: block;
+}
+
+.result-title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.result-title span {
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  color: #5affb2;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.result-title h2 {
+  font-size: 1.9rem;
+  letter-spacing: 1px;
+}
+
+.preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.toolbar-label {
+  font-size: 0.85rem;
+  color: #a9b8d8;
+  font-weight: 700;
+}
+
+.bg-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.swatch-btn {
+  padding: 6px 13px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 183, 255, 0.3);
+  background: rgba(14, 25, 56, 0.7);
+  color: #cfe0ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.swatch-btn.active {
+  background: linear-gradient(135deg, #0088ff, #00d4ff);
+  color: #041024;
+  border-color: transparent;
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.image-card {
+  background: rgba(14, 25, 56, 0.7);
+  border: 1px solid rgba(0, 183, 255, 0.25);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.card-label {
+  padding: 10px 16px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: rgba(7, 13, 30, 0.85);
+  border-bottom: 1px solid rgba(0, 183, 255, 0.18);
+  color: #9ec0ff;
+}
+
+.image-container,
+.transparent-bg {
+  min-height: 280px;
+  max-height: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.transparent-bg {
+  background-color: #162038;
+  background-image:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.06) 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+}
+
+.transparent-bg.bg-dark {
+  background-image: none;
+  background-color: #070b14;
+}
+
+.transparent-bg.bg-light {
+  background-image: none;
+  background-color: #f4f7ff;
+}
+
+.transparent-bg.bg-neon {
+  background-image: none;
+  background-color: #09254a;
+}
+
+.image-container img,
+.transparent-bg img {
+  max-width: 100%;
+  max-height: 410px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.card-meta {
+  padding: 8px 16px;
+  font-size: 0.78rem;
+  color: #96add8;
+  background: rgba(7, 13, 30, 0.65);
+  border-top: 1px solid rgba(0, 183, 255, 0.14);
+}
+
+.comparison-arrow {
+  font-size: 1.8rem;
+  color: #00b7ff;
+  font-weight: 800;
+}
+
+.result-buttons {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.download-btn,
+.new-btn {
+  padding: 13px 26px;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #00d4ff, #0088ff);
+  color: #041024;
+  box-shadow: 0 8px 24px rgba(0, 183, 255, 0.35);
+}
+
+.download-btn:hover {
+  transform: translateY(-2px);
+}
+
+.new-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.new-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* FEATURES */
+.features {
+  max-width: 1120px;
+  margin: 64px auto 40px;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 22px;
+}
+
+.feature-card {
+  background: rgba(14, 25, 56, 0.58);
+  border: 1px solid rgba(0, 183, 255, 0.2);
+  border-radius: 16px;
+  padding: 26px 22px;
+  text-align: center;
+}
+
+.feature-icon {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+}
+
+.feature-card h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.feature-card p {
+  color: #a9b8d8;
+  font-size: 0.92rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .comparison {
+    grid-template-columns: 1fr;
   }
-  if (currentResultUrl) {
-    URL.revokeObjectURL(currentResultUrl);
-    currentResultUrl = null;
-  }
-}
 
-function setProgress(value) {
-  const clamped = Math.max(0, Math.min(100, Math.round(value)));
-  if (progressBar) progressBar.style.width = `${clamped}%`;
-  if (percentage) percentage.textContent = `${clamped}%`;
-}
-
-function resizeIfLarge(file, tempUrl) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const width = img.naturalWidth || img.width;
-      const height = img.naturalHeight || img.height;
-      const longestSide = Math.max(width, height);
-
-      if (!longestSide || longestSide <= MAX_IMAGE_DIMENSION) {
-        resolve(file);
-        return;
-      }
-
-      const scale = MAX_IMAGE_DIMENSION / longestSide;
-      const targetWidth = Math.max(1, Math.round(width * scale));
-      const targetHeight = Math.max(1, Math.round(height * scale));
-
-      const canvas = document.createElement("canvas");
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-
-      canvas.toBlob(
-        (blob) => resolve(blob || file),
-        "image/jpeg",
-        0.9
-      );
-    };
-    img.onerror = () => resolve(file);
-    img.src = tempUrl;
-  });
-}
-
-async function loadAI() {
-  if (removeBackground) return removeBackground;
-  if (!loadingPromise) {
-    loadingPromise = import(PACKAGE_URL).then((module) => {
-      const candidate = module.default || module.removeBackground || module;
-      if (typeof candidate === "function") return candidate;
-      if (typeof module.removeBackground === "function") return module.removeBackground;
-      throw new Error("Could not initialize background removal library.");
-    });
-  }
-  removeBackground = await loadingPromise;
-  return removeBackground;
-}
-
-function openPicker(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  fileInput.value = "";
-  fileInput.click();
-}
-
-function resetToUpload() {
-  cleanupUrls();
-  if (originalImage) originalImage.removeAttribute("src");
-  if (resultImage) resultImage.removeAttribute("src");
-  if (resultSection) resultSection.classList.remove("show");
-  if (processing) processing.classList.remove("show");
-  if (uploadBox) uploadBox.style.display = "";
-  if (statusText) statusText.textContent = "AI ENGINE ONLINE";
-  if (statusDot) statusDot.style.background = "#00ff88";
-  setProgress(0);
-}
-
-uploadBtn.addEventListener("click", openPicker);
-uploadBox.addEventListener("click", (event) => {
-  if (event.target !== uploadBtn) openPicker(event);
-});
-
-["dragenter", "dragover"].forEach((type) =>
-  uploadBox.addEventListener(type, (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    uploadBox.classList.add("drag-over");
-  })
-);
-
-["dragleave", "drop"].forEach((type) =>
-  uploadBox.addEventListener(type, (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    uploadBox.classList.remove("drag-over");
-  })
-);
-
-uploadBox.addEventListener("drop", (event) => {
-  const file = event.dataTransfer.files?.[0];
-  if (file) processFile(file);
-});
-
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files?.[0];
-  if (file) processFile(file);
-});
-
-if (newBtn) {
-  newBtn.addEventListener("click", resetToUpload);
-}
-
-if (downloadBtn) {
-  downloadBtn.addEventListener("click", () => {
-    if (!currentResultUrl) return;
-    const link = document.createElement("a");
-    link.href = currentResultUrl;
-    link.download = currentDownloadName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
-}
-
-async function processFile(file) {
-  if (!file.type.startsWith("image/")) {
-    alert("Please select an image file.");
-    return;
-  }
-  if (file.size > 10 * 1024 * 1024) {
-    alert("Maximum file size is 10MB.");
-    return;
-  }
-
-  cleanupUrls();
-  const baseName = (file.name || "image").replace(/\.[^.]+$/, "");
-  currentDownloadName = `${baseName}-no-bg.png`;
-
-  currentOriginalUrl = URL.createObjectURL(file);
-  originalImage.src = currentOriginalUrl;
-
-  uploadBox.style.display = "none";
-  resultSection.classList.remove("show");
-  processing.classList.add("show");
-  statusText.textContent = "AI PROCESSING...";
-  statusDot.style.background = "#00b7ff";
-  setProgress(5);
-  processingText.textContent = "LOADING AI MODEL...";
-  processingSub.textContent = "First use may take longer while AI files load...";
-
-  try {
-    const [preparedImage, remove] = await Promise.all([
-      resizeIfLarge(file, currentOriginalUrl),
-      loadAI()
-    ]);
-
-    setProgress(10);
-    processingText.textContent = "REMOVING BACKGROUND...";
-    processingSub.textContent = "AI is running locally in your browser. Please wait...";
-
-    let lastShown = 10;
-    const resultBlob = await remove(preparedImage, {
-      model: "isnet_quint8",
-      publicPath: MODEL_DATA_URL,
-      output: { format: "image/png", type: "foreground" },
-      progress: (key, current, total) => {
-        if (!total || total <= 0) return;
-        const stage = String(key || "").toLowerCase();
-        let start = 10;
-        let end = 96;
-        if (stage.includes("fetch")) {
-          start = 10;
-          end = 55;
-        } else if (stage.includes("decode")) {
-          start = 55;
-          end = 65;
-        } else if (stage.includes("inference") || stage.includes("compute")) {
-          start = 65;
-          end = 88;
-        } else {
-          start = 88;
-          end = 96;
-        }
-
-        const ratio = Math.max(0, Math.min(1, current / total));
-        const mapped = start + ratio * (end - start);
-        if (mapped > lastShown) {
-          lastShown = mapped;
-          setProgress(mapped);
-        }
-      }
-    });
-
-    currentResultUrl = URL.createObjectURL(resultBlob);
-    resultImage.src = currentResultUrl;
-
-    setProgress(100);
-    processing.classList.remove("show");
-    resultSection.classList.add("show");
-    statusText.textContent = "AI ENGINE ONLINE";
-    statusDot.style.background = "#00ff88";
-  } catch (error) {
-    console.error("Background removal error:", error);
-    alert("Failed: " + (error?.message || "Unknown error occurred."));
-    resetToUpload();
+  .comparison-arrow {
+    transform: rotate(90deg);
+    text-align: center;
   }
 }
