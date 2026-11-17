@@ -1,6 +1,6 @@
 const PACKAGE_URL = "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
 const MODEL_DATA_URL = "https://staticimgly.com/@imgly/background-removal-data/1.7.0/dist/";
-const MAX_AI_DIMENSION = 1024;
+const MAX_IMAGE_DIMENSION = 1280;
 
 const uploadBtn = document.getElementById("uploadBtn");
 const uploadBox = document.getElementById("uploadBox");
@@ -8,6 +8,8 @@ const processing = document.getElementById("processing");
 const resultSection = document.getElementById("resultSection");
 const originalImage = document.getElementById("originalImage");
 const resultImage = document.getElementById("resultImage");
+const progressBar = document.getElementById("progressBar");
+const percentage = document.getElementById("percentage");
 const processingText = document.getElementById("processingText");
 const processingSub = document.getElementById("processingSub");
 const statusText = document.getElementById("statusText");
@@ -38,74 +40,45 @@ function cleanupUrls() {
   }
 }
 
-function loadImageElement(src) {
-  return new Promise((resolve, reject) => {
+function setProgress(value) {
+  const clamped = Math.max(0, Math.min(100, Math.round(value)));
+  if (progressBar) progressBar.style.width = `${clamped}%`;
+  if (percentage) percentage.textContent = `${clamped}%`;
+}
+
+function resizeIfLarge(file, tempUrl) {
+  return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Failed to load image."));
-    img.src = src;
-  });
-}
+    img.onload = () => {
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      const longestSide = Math.max(width, height);
 
-async function createFastInput(file, originalImg) {
-  const origWidth = originalImg.naturalWidth || originalImg.width;
-  const origHeight = originalImg.naturalHeight || originalImg.height;
-  const longestSide = Math.max(origWidth, origHeight);
+      if (!longestSide || longestSide <= MAX_IMAGE_DIMENSION) {
+        resolve(file);
+        return;
+      }
 
-  if (!longestSide || longestSide <= MAX_AI_DIMENSION) {
-    return {
-      aiInput: file,
-      origWidth,
-      origHeight,
-      wasResized: false
+      const scale = MAX_IMAGE_DIMENSION / longestSide;
+      const targetWidth = Math.max(1, Math.round(width * scale));
+      const targetHeight = Math.max(1, Math.round(height * scale));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+      canvas.toBlob(
+        (blob) => resolve(blob || file),
+        "image/jpeg",
+        0.9
+      );
     };
-  }
-
-  const scale = MAX_AI_DIMENSION / longestSide;
-  const targetWidth = Math.max(1, Math.round(origWidth * scale));
-  const targetHeight = Math.max(1, Math.round(origHeight * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(originalImg, 0, 0, targetWidth, targetHeight);
-
-  const resizedBlob = await new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob || file), "image/jpeg", 0.92);
+    img.onerror = () => resolve(file);
+    img.src = tempUrl;
   });
-
-  return {
-    aiInput: resizedBlob,
-    origWidth,
-    origHeight,
-    wasResized: resizedBlob !== file
-  };
-}
-
-async function restoreOriginalDimensions(resultBlob, origWidth, origHeight, wasResized) {
-  if (!wasResized || !origWidth || !origHeight) {
-    return resultBlob;
-  }
-
-  const tempUrl = URL.createObjectURL(resultBlob);
-  try {
-    const cutoutImg = await loadImageElement(tempUrl);
-    const canvas = document.createElement("canvas");
-    canvas.width = origWidth;
-    canvas.height = origHeight;
-
-    const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, origWidth, origHeight);
-    ctx.drawImage(cutoutImg, 0, 0, origWidth, origHeight);
-
-    return await new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob || resultBlob), "image/png");
-    });
-  } finally {
-    URL.revokeObjectURL(tempUrl);
-  }
 }
 
 async function loadAI() {
@@ -140,6 +113,7 @@ function resetToUpload() {
   if (uploadBox) uploadBox.style.display = "";
   if (statusText) statusText.textContent = "AI ENGINE ONLINE";
   if (statusDot) statusDot.style.background = "#00ff88";
+  setProgress(0);
 }
 
 uploadBtn.addEventListener("click", openPicker);
@@ -211,36 +185,57 @@ async function processFile(file) {
   processing.classList.add("show");
   statusText.textContent = "AI PROCESSING...";
   statusDot.style.background = "#00b7ff";
-  processingText.textContent = "PROCESSING IMAGE...";
-  processingSub.textContent = "Removing background locally in your browser...";
+  setProgress(5);
+  processingText.textContent = "LOADING AI MODEL...";
+  processingSub.textContent = "First use may take longer while AI files load...";
 
   try {
-    const [originalImg, remove] = await Promise.all([
-      loadImageElement(currentOriginalUrl),
+    const [preparedImage, remove] = await Promise.all([
+      resizeIfLarge(file, currentOriginalUrl),
       loadAI()
     ]);
 
-    const { aiInput, origWidth, origHeight, wasResized } = await createFastInput(
-      file,
-      originalImg
-    );
+    setProgress(10);
+    processingText.textContent = "REMOVING BACKGROUND...";
+    processingSub.textContent = "AI is running locally in your browser. Please wait...";
 
-    const rawResultBlob = await remove(aiInput, {
+    let lastShown = 10;
+    const resultBlob = await remove(preparedImage, {
       model: "isnet_quint8",
       publicPath: MODEL_DATA_URL,
-      output: { format: "image/png", type: "foreground" }
+      output: { format: "image/png", type: "foreground" },
+      progress: (key, current, total) => {
+        if (!total || total <= 0) return;
+        const stage = String(key || "").toLowerCase();
+        let start = 10;
+        let end = 96;
+        if (stage.includes("fetch")) {
+          start = 10;
+          end = 55;
+        } else if (stage.includes("decode")) {
+          start = 55;
+          end = 65;
+        } else if (stage.includes("inference") || stage.includes("compute")) {
+          start = 65;
+          end = 88;
+        } else {
+          start = 88;
+          end = 96;
+        }
+
+        const ratio = Math.max(0, Math.min(1, current / total));
+        const mapped = start + ratio * (end - start);
+        if (mapped > lastShown) {
+          lastShown = mapped;
+          setProgress(mapped);
+        }
+      }
     });
 
-    const finalPngBlob = await restoreOriginalDimensions(
-      rawResultBlob,
-      origWidth,
-      origHeight,
-      wasResized
-    );
-
-    currentResultUrl = URL.createObjectURL(finalPngBlob);
+    currentResultUrl = URL.createObjectURL(resultBlob);
     resultImage.src = currentResultUrl;
 
+    setProgress(100);
     processing.classList.remove("show");
     resultSection.classList.add("show");
     statusText.textContent = "AI ENGINE ONLINE";
