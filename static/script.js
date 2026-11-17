@@ -29,11 +29,12 @@ let currentOriginalUrl = null;
 let currentResultUrl = null;
 let currentDownloadName = "background-removed.png";
 
-// Independent visual animation state (decoupled from real AI completion)
-let rafId = null;
-let animStartTime = 0;
+let animInterval = null;
 let visualPercent = 0;
-let targetCapPercent = 94;
+
+function yieldToBrowser() {
+  return new Promise((resolve) => setTimeout(resolve, 30));
+}
 
 function cleanupUrls() {
   if (currentOriginalUrl) {
@@ -46,40 +47,28 @@ function cleanupUrls() {
   }
 }
 
-function renderProgress(value) {
-  const clamped = Math.max(0, Math.min(100, value));
-  visualPercent = clamped;
-  if (progressBar) progressBar.style.width = `${clamped.toFixed(1)}%`;
-  if (percentage) percentage.textContent = `${Math.round(clamped)}%`;
+function setVisualPercent(val) {
+  visualPercent = Math.max(0, Math.min(100, val));
+  if (progressBar) progressBar.style.width = `${visualPercent.toFixed(1)}%`;
+  if (percentage) percentage.textContent = `${Math.round(visualPercent)}%`;
 }
 
-function stopVisualLoop() {
-  if (rafId !== null) {
-    cancelAnimationFrame(rafId);
-    rafId = null;
+function stopVisualAnimation() {
+  if (animInterval !== null) {
+    clearInterval(animInterval);
+    animInterval = null;
   }
 }
 
-function startVisualLoop(cap = 94) {
-  stopVisualLoop();
-  targetCapPercent = cap;
-  animStartTime = performance.now();
-
-  const tick = (now) => {
-    const elapsedSec = (now - animStartTime) / 1000;
-    // Smooth ease-out curve that keeps moving without ever freezing on one number
-    const eased = targetCapPercent * (1 - Math.exp(-elapsedSec * 0.14));
-    const nextVal = Math.max(visualPercent, Math.min(targetCapPercent, eased));
-    renderProgress(nextVal);
-    rafId = requestAnimationFrame(tick);
-  };
-
-  rafId = requestAnimationFrame(tick);
-}
-
-function completeVisualLoop() {
-  stopVisualLoop();
-  renderProgress(100);
+function startVisualAnimation(cap = 95) {
+  stopVisualAnimation();
+  animInterval = setInterval(() => {
+    if (visualPercent < cap) {
+      const diff = cap - visualPercent;
+      const step = Math.max(0.35, diff * 0.03);
+      setVisualPercent(Math.min(cap, visualPercent + step));
+    }
+  }, 150);
 }
 
 function loadImageElement(src) {
@@ -176,7 +165,7 @@ function openPicker(event) {
 }
 
 function resetToUpload() {
-  stopVisualLoop();
+  stopVisualAnimation();
   cleanupUrls();
   if (originalImage) originalImage.removeAttribute("src");
   if (resultImage) resultImage.removeAttribute("src");
@@ -185,7 +174,7 @@ function resetToUpload() {
   if (uploadBox) uploadBox.style.display = "";
   if (statusText) statusText.textContent = "AI ENGINE ONLINE";
   if (statusDot) statusDot.style.background = "#00ff88";
-  renderProgress(0);
+  setVisualPercent(0);
 }
 
 uploadBtn.addEventListener("click", openPicker);
@@ -245,7 +234,7 @@ async function processFile(file) {
     return;
   }
 
-  stopVisualLoop();
+  stopVisualAnimation();
   cleanupUrls();
   const baseName = (file.name || "image").replace(/\.[^.]+$/, "");
   currentDownloadName = `${baseName}-no-bg.png`;
@@ -258,10 +247,12 @@ async function processFile(file) {
   processing.classList.add("show");
   statusText.textContent = "AI PROCESSING...";
   statusDot.style.background = "#00b7ff";
-  renderProgress(2);
+  setVisualPercent(2);
   processingText.textContent = "LOADING AI MODEL...";
-  processingSub.textContent = "Animation is running smoothly while AI prepares...";
-  startVisualLoop(94);
+  processingSub.textContent = "Running smoothly while AI prepares...";
+  startVisualAnimation(95);
+
+  await yieldToBrowser();
 
   try {
     const [originalImg, remove] = await Promise.all([
@@ -275,7 +266,8 @@ async function processFile(file) {
     );
 
     processingText.textContent = "REMOVING BACKGROUND...";
-    processingSub.textContent = "AI is processing your image in the background...";
+    processingSub.textContent = "AI is removing the background in your browser...";
+    await yieldToBrowser();
 
     const rawResultBlob = await remove(aiInput, {
       model: "isnet_quint8",
@@ -284,7 +276,8 @@ async function processFile(file) {
     });
 
     processingText.textContent = "FINALIZING PNG...";
-    processingSub.textContent = "Restoring original image dimensions...";
+    processingSub.textContent = "Restoring original image size...";
+    await yieldToBrowser();
 
     const finalPngBlob = await restoreOriginalDimensions(
       rawResultBlob,
@@ -293,7 +286,8 @@ async function processFile(file) {
       wasResized
     );
 
-    completeVisualLoop();
+    stopVisualAnimation();
+    setVisualPercent(100);
 
     currentResultUrl = URL.createObjectURL(finalPngBlob);
     resultImage.src = currentResultUrl;
@@ -303,7 +297,7 @@ async function processFile(file) {
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
   } catch (error) {
-    stopVisualLoop();
+    stopVisualAnimation();
     console.error("Background removal error:", error);
     alert("Failed: " + (error?.message || "Unknown error occurred."));
     resetToUpload();
