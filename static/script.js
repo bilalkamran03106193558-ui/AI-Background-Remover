@@ -8,8 +8,6 @@ const processing = document.getElementById("processing");
 const resultSection = document.getElementById("resultSection");
 const originalImage = document.getElementById("originalImage");
 const resultImage = document.getElementById("resultImage");
-const progressBar = document.getElementById("progressBar");
-const percentage = document.getElementById("percentage");
 const processingText = document.getElementById("processingText");
 const processingSub = document.getElementById("processingSub");
 const statusText = document.getElementById("statusText");
@@ -29,13 +27,6 @@ let currentOriginalUrl = null;
 let currentResultUrl = null;
 let currentDownloadName = "background-removed.png";
 
-let animInterval = null;
-let visualPercent = 0;
-
-function yieldToBrowser() {
-  return new Promise((resolve) => setTimeout(resolve, 30));
-}
-
 function cleanupUrls() {
   if (currentOriginalUrl) {
     URL.revokeObjectURL(currentOriginalUrl);
@@ -45,30 +36,6 @@ function cleanupUrls() {
     URL.revokeObjectURL(currentResultUrl);
     currentResultUrl = null;
   }
-}
-
-function setVisualPercent(val) {
-  visualPercent = Math.max(0, Math.min(100, val));
-  if (progressBar) progressBar.style.width = `${visualPercent.toFixed(1)}%`;
-  if (percentage) percentage.textContent = `${Math.round(visualPercent)}%`;
-}
-
-function stopVisualAnimation() {
-  if (animInterval !== null) {
-    clearInterval(animInterval);
-    animInterval = null;
-  }
-}
-
-function startVisualAnimation(cap = 95) {
-  stopVisualAnimation();
-  animInterval = setInterval(() => {
-    if (visualPercent < cap) {
-      const diff = cap - visualPercent;
-      const step = Math.max(0.35, diff * 0.03);
-      setVisualPercent(Math.min(cap, visualPercent + step));
-    }
-  }, 150);
 }
 
 function loadImageElement(src) {
@@ -165,7 +132,6 @@ function openPicker(event) {
 }
 
 function resetToUpload() {
-  stopVisualAnimation();
   cleanupUrls();
   if (originalImage) originalImage.removeAttribute("src");
   if (resultImage) resultImage.removeAttribute("src");
@@ -174,7 +140,6 @@ function resetToUpload() {
   if (uploadBox) uploadBox.style.display = "";
   if (statusText) statusText.textContent = "AI ENGINE ONLINE";
   if (statusDot) statusDot.style.background = "#00ff88";
-  setVisualPercent(0);
 }
 
 uploadBtn.addEventListener("click", openPicker);
@@ -234,7 +199,6 @@ async function processFile(file) {
     return;
   }
 
-  stopVisualAnimation();
   cleanupUrls();
   const baseName = (file.name || "image").replace(/\.[^.]+$/, "");
   currentDownloadName = `${baseName}-no-bg.png`;
@@ -247,12 +211,8 @@ async function processFile(file) {
   processing.classList.add("show");
   statusText.textContent = "AI PROCESSING...";
   statusDot.style.background = "#00b7ff";
-  setVisualPercent(2);
-  processingText.textContent = "LOADING AI MODEL...";
-  processingSub.textContent = "Running smoothly while AI prepares...";
-  startVisualAnimation(95);
-
-  await yieldToBrowser();
+  processingText.textContent = "PROCESSING IMAGE...";
+  processingSub.textContent = "Removing background locally in your browser...";
 
   try {
     const [originalImg, remove] = await Promise.all([
@@ -265,19 +225,11 @@ async function processFile(file) {
       originalImg
     );
 
-    processingText.textContent = "REMOVING BACKGROUND...";
-    processingSub.textContent = "AI is removing the background in your browser...";
-    await yieldToBrowser();
-
     const rawResultBlob = await remove(aiInput, {
       model: "isnet_quint8",
       publicPath: MODEL_DATA_URL,
       output: { format: "image/png", type: "foreground" }
     });
-
-    processingText.textContent = "FINALIZING PNG...";
-    processingSub.textContent = "Restoring original image size...";
-    await yieldToBrowser();
 
     const finalPngBlob = await restoreOriginalDimensions(
       rawResultBlob,
@@ -285,9 +237,6 @@ async function processFile(file) {
       origHeight,
       wasResized
     );
-
-    stopVisualAnimation();
-    setVisualPercent(100);
 
     currentResultUrl = URL.createObjectURL(finalPngBlob);
     resultImage.src = currentResultUrl;
@@ -297,7 +246,6 @@ async function processFile(file) {
     statusText.textContent = "AI ENGINE ONLINE";
     statusDot.style.background = "#00ff88";
   } catch (error) {
-    stopVisualAnimation();
     console.error("Background removal error:", error);
     alert("Failed: " + (error?.message || "Unknown error occurred."));
     resetToUpload();
