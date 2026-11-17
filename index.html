@@ -14,9 +14,9 @@
 
   <main>
     <section class="hero">
-      <div class="badge">⚡ AI POWERED</div>
+      <div class="badge">⚡ AI POWERED STUDIO</div>
       <h1>REMOVE BACKGROUNDS<br><span>WITH AI</span></h1>
-      <p class="subtitle">Fast. Precise. Powerful.<br>Remove image backgrounds with AI directly in your browser.</p>
+      <p class="subtitle">Fast. Precise. Powerful.<br>Remove backgrounds, inspect edges, zoom, crop, and export transparent PNGs in your browser.</p>
 
       <div class="notice-banner" id="noticeBanner" role="alert"></div>
 
@@ -43,23 +43,59 @@
       <section class="result-section" id="resultSection">
         <div class="result-title">
           <span>✓ AI PROCESS COMPLETE</span>
-          <h2>SEE THE DIFFERENCE</h2>
+          <h2>STUDIO PREVIEW &amp; EXPORT</h2>
+        </div>
+
+        <div class="studio-toolbar">
+          <div class="toolbar-group">
+            <span class="toolbar-label">View Mode:</span>
+            <button class="tool-btn active" id="modeSideBtn" type="button">Side-by-Side</button>
+            <button class="tool-btn" id="modeSliderBtn" type="button">Before / After Slider</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">Zoom:</span>
+            <button class="tool-btn" id="zoomOutBtn" type="button">−</button>
+            <span class="zoom-readout" id="zoomReadout">100%</span>
+            <button class="tool-btn" id="zoomInBtn" type="button">+</button>
+            <button class="tool-btn" id="zoomResetBtn" type="button">Reset</button>
+          </div>
+
+          <div class="toolbar-group">
+            <span class="toolbar-label">Crop:</span>
+            <button class="tool-btn" id="cropToggleBtn" type="button">Crop Tool</button>
+            <button class="tool-btn apply-btn" id="cropApplyBtn" type="button" style="display:none;">Apply Crop</button>
+            <button class="tool-btn" id="cropCancelBtn" type="button" style="display:none;">Cancel</button>
+          </div>
+
+          <div class="toolbar-group">
+            <button class="tool-btn" id="glowToggleBtn" type="button">Edge Glow: Off</button>
+          </div>
         </div>
 
         <div class="preview-toolbar">
-          <span class="toolbar-label">Preview Background:</span>
-          <div class="bg-swatches" role="group" aria-label="Preview background color">
+          <span class="toolbar-label">Backdrop:</span>
+          <div class="bg-swatches" role="group" aria-label="Preview backdrop presets">
             <button class="swatch-btn active" data-bg="checker" type="button">Checker</button>
             <button class="swatch-btn" data-bg="dark" type="button">Dark</button>
             <button class="swatch-btn" data-bg="light" type="button">White</button>
             <button class="swatch-btn" data-bg="neon" type="button">Neon</button>
+            <button class="swatch-btn" data-bg="sunset" type="button">Sunset</button>
+            <button class="swatch-btn" data-bg="green" type="button">Green</button>
+            <label class="color-picker-wrap" title="Pick custom backdrop color">
+              <span>Custom</span>
+              <input type="color" id="customColorInput" value="#00b7ff">
+            </label>
           </div>
         </div>
 
-        <div class="comparison">
+        <!-- SIDE-BY-SIDE VIEW -->
+        <div class="comparison" id="sideBySideView">
           <div class="image-card">
             <div class="card-label">ORIGINAL</div>
-            <div class="image-container"><img id="originalImage" alt="Original image"></div>
+            <div class="image-container" id="originalStage">
+              <img id="originalImage" alt="Original image">
+            </div>
             <div class="card-meta" id="originalMeta">—</div>
           </div>
 
@@ -67,9 +103,29 @@
 
           <div class="image-card result-card">
             <div class="card-label">AI REMOVED (PNG)</div>
-            <div class="transparent-bg" id="resultStage"><img id="resultImage" alt="Background removed image"></div>
+            <div class="transparent-bg" id="resultStage">
+              <img id="resultImage" alt="Background removed image">
+              <div class="crop-overlay" id="cropOverlay">
+                <div class="crop-box" id="cropBox"></div>
+              </div>
+            </div>
             <div class="card-meta" id="resultMeta">—</div>
           </div>
+        </div>
+
+        <!-- BEFORE / AFTER SLIDER VIEW -->
+        <div class="slider-view" id="sliderView">
+          <div class="slider-stage transparent-bg" id="sliderStage">
+            <img id="sliderAfterImage" class="slider-img after-img" alt="After background removal">
+            <div class="slider-before-clip" id="sliderBeforeClip">
+              <img id="sliderBeforeImage" class="slider-img before-img" alt="Before background removal">
+            </div>
+            <div class="slider-divider" id="sliderDivider">
+              <div class="slider-knob">↔</div>
+            </div>
+            <input type="range" min="0" max="100" value="50" id="compareRange" class="compare-range" aria-label="Compare before and after">
+          </div>
+          <div class="card-meta" id="sliderMeta">Drag slider to compare Original vs. AI Removed</div>
         </div>
 
         <div class="result-buttons">
@@ -81,18 +137,18 @@
       <section class="features">
         <div class="feature-card">
           <div class="feature-icon">⚡</div>
-          <h3>Lightning Fast</h3>
-          <p>Optimizes large photos for fast browser processing while keeping original dimensions.</p>
+          <h3>Fast Local AI</h3>
+          <p>Runs in your browser while preserving original image dimensions.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🎯</div>
-          <h3>High Precision</h3>
-          <p>Clean transparent PNG output with multi-background edge inspection.</p>
+          <div class="feature-icon">🔍</div>
+          <h3>Zoom, Crop &amp; Compare</h3>
+          <p>Inspect cutouts with a before/after slider, zoom controls, and custom crop.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">🔒</div>
-          <h3>Private</h3>
-          <p>Images stay in your browser session and are never uploaded to a backend server.</p>
+          <div class="feature-icon">🎨</div>
+          <h3>Backdrop Presets</h3>
+          <p>Test transparent, dark, white, neon, or custom colors before saving PNG.</p>
         </div>
       </section>
     </section>
